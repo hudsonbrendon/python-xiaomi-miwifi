@@ -724,3 +724,79 @@ async def test_v05_read_endpoints(host, base):
     assert dmz["status"] == 0
     assert pf["list"] == []
     await client.async_close()
+
+
+async def test_run_speed_test(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(re.compile(
+            rf"{re.escape(base)}/;stok=TESTTOKEN/api/misystem/bandwidth_test(?!\?history).*"),
+            payload=c.BANDWIDTH_HISTORY)
+        result = await client.async_run_speed_test()
+    assert result["download"] == 865.28
+    await client.async_close()
+
+
+async def test_add_and_delete_port_forward(host, base):
+    import urllib.parse
+
+    from tests import conftest as c
+
+    captured = {}
+
+    def cb(url, **kwargs):
+        captured.setdefault("urls", []).append(str(url))
+        from aioresponses.core import CallbackResult
+        return CallbackResult(payload={"code": 0})
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/add_redirect.*"),
+              callback=cb)
+        m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/redirect_apply.*"),
+              callback=cb, repeat=True)
+        m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/delete_redirect.*"),
+              callback=cb)
+        ok_add = await client.async_add_port_forward(
+            "192.168.31.50", "web", 1, 8080, 80)
+        ok_del = await client.async_delete_port_forward(8080)
+    assert ok_add is True and ok_del is True
+    add_url = next(u for u in captured["urls"] if "add_redirect" in u)
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(add_url).query)
+    assert q["ip"] == ["192.168.31.50"]
+    assert q["proto"] == ["1"]
+    assert q["sport"] == ["8080"]
+    assert q["dport"] == ["80"]
+    await client.async_close()
+
+
+async def test_set_and_clear_dmz_and_ddns_and_dhcp(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        for ep in ("set_dmz", "dmz_off", "ddns_switch", "set_lan_dhcp"):
+            m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/{ep}.*"),
+                  payload={"code": 0})
+        assert await client.async_set_dmz("192.168.31.50") is True
+        assert await client.async_clear_dmz() is True
+        assert await client.async_set_ddns(True) is True
+        assert await client.async_set_dhcp(5, 250, "720m") is True
+    await client.async_close()

@@ -15,12 +15,16 @@ from .const import (
     DEFAULT_PORT,
     HTTP_TIMEOUT,
     HTTP_TIMEOUT_SLOW,
+    PATH_ADD_REDIRECT,
     PATH_AVAILABLE_CHANNELS,
     PATH_BANDWIDTH_TEST,
     PATH_CHECK_ROM,
     PATH_DDNS,
+    PATH_DDNS_SWITCH,
+    PATH_DELETE_REDIRECT,
     PATH_DEVICELIST,
     PATH_DMZ,
+    PATH_DMZ_OFF,
     PATH_INIT_INFO,
     PATH_LAN_DHCP,
     PATH_LAN_INFO,
@@ -36,7 +40,10 @@ from .const import (
     PATH_QOS_INFO,
     PATH_QOS_SWITCH,
     PATH_REBOOT,
+    PATH_REDIRECT_APPLY,
     PATH_ROUTER_INFO,
+    PATH_SET_DMZ,
+    PATH_SET_LAN_DHCP,
     PATH_SET_MAC_FILTER,
     PATH_SET_WIFI,
     PATH_STATUS,
@@ -485,6 +492,52 @@ class MiWiFiClient:
         """Enable/disable QoS."""
         on = 1 if enabled else 0
         return self._ok(await self._get(f"{PATH_QOS_SWITCH}?on={on}"))
+
+    async def async_run_speed_test(self) -> dict:
+        """Trigger a WAN speed test and return its result. Saturates the WAN
+        link briefly — disruptive; never called live in tests."""
+        return await self._get(PATH_BANDWIDTH_TEST)
+
+    async def async_add_port_forward(
+        self, ip: str, name: str, proto: int, sport: int, dport: int
+    ) -> bool:
+        """Add a single-port forward (proto: 1=TCP, 2=UDP, 3=TCP+UDP) and apply."""
+        params = urllib.parse.urlencode(
+            {"ip": ip, "name": name, "proto": str(proto),
+             "sport": str(sport), "dport": str(dport)}
+        )
+        if not self._ok(await self._get(f"{PATH_ADD_REDIRECT}?{params}")):
+            return False
+        return self._ok(await self._get(PATH_REDIRECT_APPLY))
+
+    async def async_delete_port_forward(self, sport: int) -> bool:
+        """Delete a port forward by its external (source) port, then apply."""
+        if not self._ok(await self._get(f"{PATH_DELETE_REDIRECT}?port={sport}")):
+            return False
+        return self._ok(await self._get(PATH_REDIRECT_APPLY))
+
+    async def async_set_dmz(self, ip: str, mac: str = "") -> bool:
+        """Enable DMZ forwarding all WAN traffic to ``ip``."""
+        params = urllib.parse.urlencode({"ip": ip, "mac": mac, "mode": "1"})
+        return self._ok(await self._get(f"{PATH_SET_DMZ}?{params}"))
+
+    async def async_clear_dmz(self) -> bool:
+        """Disable DMZ."""
+        return self._ok(await self._get(f"{PATH_DMZ_OFF}?mode=1"))
+
+    async def async_set_ddns(self, enabled: bool) -> bool:
+        """Enable/disable DDNS."""
+        return self._ok(
+            await self._get(f"{PATH_DDNS_SWITCH}?on={1 if enabled else 0}")
+        )
+
+    async def async_set_dhcp(self, start: int, end: int, leasetime: str) -> bool:
+        """Set DHCP pool start/end (last octet) and lease time (e.g. '720m')."""
+        params = urllib.parse.urlencode(
+            {"start": str(start), "end": str(end),
+             "leasetime": leasetime, "ignore": "0"}
+        )
+        return self._ok(await self._get(f"{PATH_SET_LAN_DHCP}?{params}"))
 
     async def __aenter__(self) -> MiWiFiClient:
         return self
