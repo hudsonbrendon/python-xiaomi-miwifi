@@ -36,6 +36,8 @@ def test_const_paths_present():
     assert const.PATH_LED == "api/misystem/led"
     assert const.PATH_ROUTER_INFO == "api/misystem/router_info"
     assert const.PATH_SET_MAC_FILTER == "api/xqnetwork/set_mac_filter"
+    assert const.PATH_WIFI_CONNECT_DEVICES == "api/xqnetwork/wifi_connect_devices"
+    assert const.PATH_LAN_INFO == "api/xqnetwork/lan_info"
 
 
 async def test_login_parses_key_and_sets_token(host, base):
