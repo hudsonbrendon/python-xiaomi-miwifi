@@ -26,6 +26,7 @@ from .const import (
     PATH_DMZ,
     PATH_DMZ_OFF,
     PATH_INIT_INFO,
+    PATH_IPV6_STATUS,
     PATH_LAN_DHCP,
     PATH_LAN_INFO,
     PATH_LED,
@@ -300,6 +301,9 @@ class MiWiFiClient:
     async def async_get_sys_time(self) -> dict:
         return await self._get(PATH_SYS_TIME)
 
+    async def async_get_ipv6_status(self) -> dict:
+        return await self._get(PATH_IPV6_STATUS)
+
     async def async_luci_request(self, path: str) -> dict:
         """Generic READ-ONLY GET passthrough to any LuCI API path.
 
@@ -342,6 +346,7 @@ class MiWiFiClient:
         portforward = await self._safe_get(f"{PATH_PORTFORWARD}?ftype=1")
         lan_dhcp = await self._safe_get(PATH_LAN_DHCP)
         sys_time = await self._safe_get(PATH_SYS_TIME)
+        ipv6 = await self._safe_get(PATH_IPV6_STATUS)
 
         return parse_status(
             newstatus=newstatus,
@@ -363,6 +368,7 @@ class MiWiFiClient:
             portforward=portforward,
             lan_dhcp=lan_dhcp,
             sys_time=sys_time,
+            ipv6=ipv6,
         )
 
     async def async_get_blocked_devices(self) -> list[dict]:

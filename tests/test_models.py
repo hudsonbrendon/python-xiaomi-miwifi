@@ -354,3 +354,15 @@ def test_parse_status_v05_defaults_when_absent():
     assert status.dmz_on is False
     assert status.port_forward_count == 0
     assert status.timezone == ""
+
+
+def test_parse_status_ipv6():
+    on = parse_status(newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+                      ipv6={"info": {"ipv6_info": {"wanType": "native"}}})
+    off = parse_status(newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+                       ipv6={"info": {"ipv6_info": {"wanType": "off"}}})
+    assert on.ipv6_on is True
+    assert off.ipv6_on is False
+    default = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM)
+    assert default.ipv6_on is False

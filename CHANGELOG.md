@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [0.6.0] - 2026-06-02
+
+### Added
+- Read: `async_get_ipv6_status` (`api/xqnetwork/ipv6_status`), wired into `async_get_status` best-effort.
+- `MiWiFiStatus.ipv6_on` derived from `info.ipv6_info.wanType` (False when `""`/`"off"`).
+
 ## [0.5.0] - 2026-06-02
 
 ### Added

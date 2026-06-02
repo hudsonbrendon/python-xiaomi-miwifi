@@ -173,6 +173,7 @@ class MiWiFiStatus:
     mesh_nodes: list[MeshNode] = field(default_factory=list)
     mode: int = 0
     lan_ports: list[bool] = field(default_factory=list)
+    ipv6_on: bool = False
 
     @property
     def model(self) -> str:
@@ -208,6 +209,7 @@ def parse_status(
     portforward=None,
     lan_dhcp=None,
     sys_time=None,
+    ipv6=None,
 ) -> MiWiFiStatus:
     """Combine the read endpoints into one MiWiFiStatus.
 
@@ -233,6 +235,7 @@ def parse_status(
     portforward = portforward if isinstance(portforward, dict) else {}
     lan_dhcp = lan_dhcp if isinstance(lan_dhcp, dict) else {}
     sys_time = sys_time if isinstance(sys_time, dict) else {}
+    ipv6 = ipv6 if isinstance(ipv6, dict) else {}
 
     hw = newstatus.get("hardware", {})
     band24 = newstatus.get("2g", {})
@@ -296,6 +299,8 @@ def parse_status(
         else ""
     )
 
+    ipv6_wan = ((ipv6.get("info") or {}).get("ipv6_info") or {}).get("wanType", "off")
+
     return MiWiFiStatus(
         online=True,
         hardware=hw.get("platform", ""),
@@ -347,4 +352,5 @@ def parse_status(
         mesh_nodes=nodes,
         mode=_to_int(router_info.get("mode")),
         lan_ports=lan_ports,
+        ipv6_on=ipv6_wan not in ("", "off"),
     )

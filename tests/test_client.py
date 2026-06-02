@@ -60,6 +60,7 @@ def test_const_paths_present():
     assert const.PATH_DMZ_OFF == "api/xqnetwork/dmz_off"
     assert const.PATH_DDNS_SWITCH == "api/xqnetwork/ddns_switch"
     assert const.PATH_SET_LAN_DHCP == "api/xqnetwork/set_lan_dhcp"
+    assert const.PATH_IPV6_STATUS == "api/xqnetwork/ipv6_status"
 
 
 async def test_login_parses_key_and_sets_token(host, base):
@@ -686,7 +687,7 @@ async def test_set_wifi_channel_unknown_index_raises(host, base):
 def test_public_exports():
     import xiaomi_miwifi as pkg
 
-    assert pkg.__version__ == "0.5.0"
+    assert pkg.__version__ == "0.6.0"
     assert pkg.MiWiFiClient is not None
     assert pkg.MiWiFiStatus is not None
     assert pkg.MiWiFiConnectionError is not None

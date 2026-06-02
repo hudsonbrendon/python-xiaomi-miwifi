@@ -50,6 +50,9 @@ PATH_PORTFORWARD = "api/xqnetwork/portforward"
 PATH_LAN_DHCP = "api/xqnetwork/lan_dhcp"
 PATH_SYS_TIME = "api/misystem/sys_time"
 
+# v0.6 read endpoints
+PATH_IPV6_STATUS = "api/xqnetwork/ipv6_status"
+
 # v0.5 write actions
 PATH_ADD_REDIRECT = "api/xqnetwork/add_redirect"
 PATH_DELETE_REDIRECT = "api/xqnetwork/delete_redirect"
