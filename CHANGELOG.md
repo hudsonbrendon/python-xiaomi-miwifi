@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## [0.3.0] - 2026-06-02
+
+### Added
+- `ClientDevice` enriched with `signal`, `band`, per-device `download_speed`/`upload_speed`/`download_total`/`upload_total` (merged from misystem/status + wifi_connect_devices).
+- `MiWiFiStatus.mode`/`mode_name` (router operating mode) and `lan_ports`/`lan_ports_active` (Ethernet link state).
+- `async_get_wifi_connect_devices`, `async_get_lan_info`, and generic read-only `async_luci_request(path)`.
+
 ## [0.2.0] - 2026-06-02
 
 ### Added
