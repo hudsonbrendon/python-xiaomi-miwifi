@@ -6,6 +6,7 @@ import json
 import random
 import re
 import time
+import urllib.parse
 from typing import Any
 
 import aiohttp
@@ -27,9 +28,11 @@ from .const import (
     PATH_MACFILTER_INFO,
     PATH_NEWSTATUS,
     PATH_QOS_INFO,
+    PATH_QOS_SWITCH,
     PATH_REBOOT,
     PATH_ROUTER_INFO,
     PATH_SET_MAC_FILTER,
+    PATH_SET_WIFI,
     PATH_STATUS,
     PATH_TOPO_GRAPH,
     PATH_WAN_INFO,
@@ -38,6 +41,8 @@ from .const import (
     PATH_WIFI_DETAIL,
     PATH_WIFI_DOWN,
     PATH_WIFI_UP,
+    WIFI_INDEX_5G,
+    WIFI_INDEX_24G,
 )
 from .exceptions import MiWiFiAuthError, MiWiFiConnectionError, MiWiFiError
 from .models import (
@@ -386,6 +391,58 @@ class MiWiFiClient:
         return self._ok(
             await self._post(PATH_SET_MAC_FILTER, {"mac": mac, "wan": "1"})
         )
+
+    _IFNAME_FOR_INDEX = {WIFI_INDEX_24G: "wl1", WIFI_INDEX_5G: "wl0"}
+
+    async def _radio_config(self, wifi_index: int) -> dict:
+        """Return the current wifi_detail_all entry for a band, or raise."""
+        detail = await self._get(PATH_WIFI_DETAIL)
+        ifname = self._IFNAME_FOR_INDEX.get(wifi_index)
+        info = detail.get("info", []) if isinstance(detail, dict) else []
+        for radio in info:
+            if isinstance(radio, dict) and radio.get("ifname") == ifname:
+                return radio
+        raise MiWiFiError(f"radio wifiIndex={wifi_index} not found")
+
+    async def _set_wifi(self, wifi_index: int, overrides: dict) -> bool:
+        """Read-modify-write set_wifi: resend the full current radio config
+        with the given field(s) overridden. Disruptive (restarts the radio).
+        """
+        radio = await self._radio_config(wifi_index)
+        chan_info = radio.get("channelInfo") or {}
+        # Prefer the resolved operating channel (channelInfo) over the stored
+        # "channel" field, which is "0" (auto) when the band is on auto-select.
+        channel = chan_info.get("channel") or radio.get("channel") or "0"
+        bandwidth = chan_info.get("bandwidth") or radio.get("bandwidth") or "0"
+        params = {
+            "wifiIndex": str(wifi_index),
+            "on": "1",
+            "ssid": radio.get("ssid", ""),
+            "pwd": radio.get("password", ""),
+            "encryption": radio.get("encryption", ""),
+            "channel": str(channel),
+            "bandwidth": str(bandwidth),
+            "txpwr": radio.get("txpwr", "max"),
+            "hidden": str(radio.get("hidden", "0")),
+            "ax": str(radio.get("ax", "0")),
+            "txbf": str(radio.get("txbf", "3")),
+        }
+        params.update(overrides)
+        query = urllib.parse.urlencode(params)
+        return self._ok(await self._get(f"{PATH_SET_WIFI}?{query}"))
+
+    async def async_set_wifi_channel(self, wifi_index: int, channel: str) -> bool:
+        """Set a band's channel (1=2.4G, 2=5G). "0" = auto. Disruptive."""
+        return await self._set_wifi(wifi_index, {"channel": str(channel)})
+
+    async def async_set_wifi_txpwr(self, wifi_index: int, txpwr: str) -> bool:
+        """Set a band's transmit power (max/mid/min). Disruptive."""
+        return await self._set_wifi(wifi_index, {"txpwr": txpwr})
+
+    async def async_set_qos(self, enabled: bool) -> bool:
+        """Enable/disable QoS."""
+        on = 1 if enabled else 0
+        return self._ok(await self._get(f"{PATH_QOS_SWITCH}?on={on}"))
 
     async def __aenter__(self) -> MiWiFiClient:
         return self

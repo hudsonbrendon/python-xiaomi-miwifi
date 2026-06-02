@@ -576,6 +576,99 @@ async def test_get_init_info_and_qos(host, base):
     await client.async_close()
 
 
+async def test_set_wifi_channel_preserves_fields(host, base):
+    import urllib.parse
+
+    from tests import conftest as c
+
+    captured = {}
+
+    def cb(url, **kwargs):
+        captured["url"] = str(url)
+        from aioresponses.core import CallbackResult
+        return CallbackResult(payload={"code": 0})
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload=c.LOGIN_OK)
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
+              payload=c.WIFI_DETAIL_TX)
+        m.get(re.compile(
+            rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/set_wifi.*"),
+            callback=cb)
+        ok = await client.async_set_wifi_channel(1, "11")
+    assert ok is True
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+    assert q["wifiIndex"] == ["1"]
+    assert q["channel"] == ["11"]
+    assert q["ssid"] == ["CASA_2G"]      # preserved from current config
+    assert q["txpwr"] == ["max"]          # preserved
+    await client.async_close()
+
+
+async def test_set_wifi_txpwr(host, base):
+    import urllib.parse
+
+    from tests import conftest as c
+
+    captured = {}
+
+    def cb(url, **kwargs):
+        captured["url"] = str(url)
+        from aioresponses.core import CallbackResult
+        return CallbackResult(payload={"code": 0})
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload=c.LOGIN_OK)
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
+              payload=c.WIFI_DETAIL_TX)
+        m.get(re.compile(
+            rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/set_wifi.*"),
+            callback=cb)
+        ok = await client.async_set_wifi_txpwr(2, "min")
+    assert ok is True
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
+    assert q["wifiIndex"] == ["2"]
+    assert q["txpwr"] == ["min"]
+    assert q["channel"] == ["36"]   # preserved from current config
+    await client.async_close()
+
+
+async def test_set_qos(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload=c.LOGIN_OK)
+        m.get(re.compile(
+            rf"{re.escape(base)}/;stok=TESTTOKEN/api/misystem/qos_switch.*"),
+            payload={"code": 0})
+        assert await client.async_set_qos(True) is True
+    await client.async_close()
+
+
+async def test_set_wifi_channel_unknown_index_raises(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload=c.LOGIN_OK)
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
+              payload={"code": 0, "info": []})
+        with pytest.raises(MiWiFiError):
+            await client.async_set_wifi_channel(1, "11")
+    await client.async_close()
+
+
 def test_public_exports():
     import xiaomi_miwifi as pkg
 
