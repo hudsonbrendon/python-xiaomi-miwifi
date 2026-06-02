@@ -16,6 +16,13 @@ def _to_int(value: object, default: int = 0) -> int:
         return default
 
 
+def _to_float(value: object, default: float = 0.0) -> float:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
 @dataclass
 class MeshNode:
     """A node in the mesh topology (gateway or leaf)."""
@@ -149,6 +156,18 @@ class MiWiFiStatus:
     txpwr_5g: str = ""
     country_code: str = ""
     qos_on: bool = False
+    speedtest_download: float = 0.0
+    speedtest_upload: float = 0.0
+    speedtest_bandwidth: float = 0.0
+    wan_dns: list[str] = field(default_factory=list)
+    ddns_on: bool = False
+    dmz_on: bool = False
+    dmz_ip: str = ""
+    port_forward_count: int = 0
+    dhcp_leasetime: int = 0
+    dhcp_limit: int = 0
+    dhcp_start: int = 0
+    timezone: str = ""
     rom_changelog: str = ""
     rom_latest_version: str = ""
     mesh_nodes: list[MeshNode] = field(default_factory=list)
@@ -182,6 +201,13 @@ def parse_status(
     lan_info: dict | None = None,
     init_info=None,
     qos_info=None,
+    bandwidth_history=None,
+    pppoe=None,
+    ddns=None,
+    dmz=None,
+    portforward=None,
+    lan_dhcp=None,
+    sys_time=None,
 ) -> MiWiFiStatus:
     """Combine the read endpoints into one MiWiFiStatus.
 
@@ -200,6 +226,13 @@ def parse_status(
     lan_info = lan_info if isinstance(lan_info, dict) else {}
     init_info = init_info if isinstance(init_info, dict) else {}
     qos_info = qos_info if isinstance(qos_info, dict) else {}
+    bandwidth_history = bandwidth_history if isinstance(bandwidth_history, dict) else {}
+    pppoe = pppoe if isinstance(pppoe, dict) else {}
+    ddns = ddns if isinstance(ddns, dict) else {}
+    dmz = dmz if isinstance(dmz, dict) else {}
+    portforward = portforward if isinstance(portforward, dict) else {}
+    lan_dhcp = lan_dhcp if isinstance(lan_dhcp, dict) else {}
+    sys_time = sys_time if isinstance(sys_time, dict) else {}
 
     hw = newstatus.get("hardware", {})
     band24 = newstatus.get("2g", {})
@@ -253,6 +286,16 @@ def parse_status(
         else []
     )
 
+    dns = pppoe.get("dns") if isinstance(pppoe.get("dns"), list) else []
+    pf_list = portforward.get("list")
+    pf_count = len(pf_list) if isinstance(pf_list, list) else 0
+    dhcp = lan_dhcp.get("info") if isinstance(lan_dhcp.get("info"), dict) else {}
+    tz = (
+        (sys_time.get("time") or {}).get("timezone", "")
+        if isinstance(sys_time.get("time"), dict)
+        else ""
+    )
+
     return MiWiFiStatus(
         online=True,
         hardware=hw.get("platform", ""),
@@ -287,6 +330,18 @@ def parse_status(
         txpwr_5g=txpwr_5g,
         country_code=init_info.get("countrycode", ""),
         qos_on=bool(_to_int((qos_info.get("status") or {}).get("on"))),
+        speedtest_download=_to_float(bandwidth_history.get("download")),
+        speedtest_upload=_to_float(bandwidth_history.get("upload")),
+        speedtest_bandwidth=_to_float(bandwidth_history.get("bandwidth")),
+        wan_dns=dns,
+        ddns_on=bool(_to_int(ddns.get("on"))),
+        dmz_on=bool(_to_int(dmz.get("status"))),
+        dmz_ip=dmz.get("lanip", "") if bool(_to_int(dmz.get("status"))) else "",
+        port_forward_count=pf_count,
+        dhcp_leasetime=_to_int(dhcp.get("leasetimeNum")),
+        dhcp_limit=_to_int(dhcp.get("limit")),
+        dhcp_start=_to_int(dhcp.get("start")),
+        timezone=tz,
         rom_changelog=rom.get("changeLog", ""),
         rom_latest_version=rom.get("version", ""),
         mesh_nodes=nodes,

@@ -318,3 +318,39 @@ def test_merge_client_telemetry_tolerates_missing_and_bad():
     merged = merge_client_telemetry(base, [None, {}], [None])
     assert merged[0].signal == 0
     assert merged[0].band == ""
+
+
+def test_parse_status_v05_fields():
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        bandwidth_history={"download": 865.28, "upload": 1553.92, "bandwidth": 6.76},
+        pppoe={"dns": ["1.1.1.1", "8.8.8.8"]},
+        ddns={"on": 1}, dmz={"status": 1, "lanip": "192.168.31.50"},
+        portforward={"list": [{"name": "web"}, {"name": "ssh"}]},
+        lan_dhcp={"info": {"leasetimeNum": "720", "limit": "250", "start": "5"}},
+        sys_time={"time": {"timezone": "CST-8"}},
+    )
+    assert status.speedtest_download == 865.28
+    assert status.speedtest_upload == 1553.92
+    assert status.speedtest_bandwidth == 6.76
+    assert status.wan_dns == ["1.1.1.1", "8.8.8.8"]
+    assert status.ddns_on is True
+    assert status.dmz_on is True
+    assert status.dmz_ip == "192.168.31.50"
+    assert status.port_forward_count == 2
+    assert status.dhcp_leasetime == 720
+    assert status.dhcp_limit == 250
+    assert status.dhcp_start == 5
+    assert status.timezone == "CST-8"
+
+
+def test_parse_status_v05_defaults_when_absent():
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM
+    )
+    assert status.speedtest_download == 0.0
+    assert status.wan_dns == []
+    assert status.ddns_on is False
+    assert status.dmz_on is False
+    assert status.port_forward_count == 0
+    assert status.timezone == ""
