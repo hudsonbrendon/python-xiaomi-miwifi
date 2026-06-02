@@ -16,6 +16,7 @@ from .const import (
     HTTP_TIMEOUT_SLOW,
     PATH_CHECK_ROM,
     PATH_DEVICELIST,
+    PATH_LAN_INFO,
     PATH_LED,
     PATH_LOGIN,
     PATH_MAC_BIND,
@@ -30,12 +31,18 @@ from .const import (
     PATH_TOPO_GRAPH,
     PATH_WAN_INFO,
     PATH_WAN_STATISTICS,
+    PATH_WIFI_CONNECT_DEVICES,
     PATH_WIFI_DETAIL,
     PATH_WIFI_DOWN,
     PATH_WIFI_UP,
 )
 from .exceptions import MiWiFiAuthError, MiWiFiConnectionError
-from .models import ClientDevice, MiWiFiStatus, parse_status
+from .models import (
+    ClientDevice,
+    MiWiFiStatus,
+    merge_client_telemetry,
+    parse_status,
+)
 
 _KEY_RE = re.compile(r"key:\s*'([^']+)'")
 _DEVICEID_RE = re.compile(r"deviceId\s*[=:]\s*'([^']+)'")
@@ -184,6 +191,13 @@ class MiWiFiClient:
     async def _get(self, path: str, *, timeout_s: int = HTTP_TIMEOUT) -> dict[str, Any]:
         return await self._request("GET", path, timeout_s=timeout_s)
 
+    async def _safe_get(self, path: str) -> dict:
+        """GET returning {} on connection error (for optional endpoints)."""
+        try:
+            return await self._get(path)
+        except MiWiFiConnectionError:
+            return {}
+
     async def _post(self, path: str, data: dict) -> dict[str, Any]:
         return await self._request("POST", path, data=data)
 
@@ -219,6 +233,20 @@ class MiWiFiClient:
     async def async_get_router_info(self) -> dict:
         return await self._get(PATH_ROUTER_INFO)
 
+    async def async_get_wifi_connect_devices(self) -> dict:
+        return await self._get(PATH_WIFI_CONNECT_DEVICES)
+
+    async def async_get_lan_info(self) -> dict:
+        return await self._get(PATH_LAN_INFO)
+
+    async def async_luci_request(self, path: str) -> dict:
+        """Generic GET passthrough to any LuCI API path (read-only).
+
+        ``path`` is the API path WITHOUT the leading ``;stok=`` prefix,
+        e.g. ``"api/misystem/router_info"``. Strips a leading slash.
+        """
+        return await self._get(path.lstrip("/"))
+
     async def async_get_status(self) -> MiWiFiStatus:
         """Aggregate all read endpoints into a MiWiFiStatus.
 
@@ -232,18 +260,11 @@ class MiWiFiClient:
         topo = await self.async_get_topology()
         rom = await self.async_get_rom_update()
 
-        try:
-            wan_stats = await self.async_get_wan_statistics()
-        except MiWiFiConnectionError:
-            wan_stats = {}
-        try:
-            wifi_detail = await self.async_get_wifi_detail()
-        except MiWiFiConnectionError:
-            wifi_detail = {}
-        try:
-            led = await self.async_get_led()
-        except MiWiFiConnectionError:
-            led = {}
+        wan_stats = await self._safe_get(PATH_WAN_STATISTICS)
+        wifi_detail = await self._safe_get(PATH_WIFI_DETAIL)
+        led = await self._safe_get(PATH_LED)
+        router_info = await self._safe_get(PATH_ROUTER_INFO)
+        lan_info = await self._safe_get(PATH_LAN_INFO)
 
         return parse_status(
             newstatus=newstatus,
@@ -254,6 +275,8 @@ class MiWiFiClient:
             wan_stats=wan_stats,
             wifi_detail=wifi_detail,
             led=led,
+            router_info=router_info,
+            lan_info=lan_info,
         )
 
     async def async_get_blocked_devices(self) -> list[dict]:
@@ -263,7 +286,20 @@ class MiWiFiClient:
     async def async_get_clients(self) -> list[ClientDevice]:
         data = await self._get(PATH_DEVICELIST)
         entries = data.get("list", []) if isinstance(data, dict) else []
-        return [ClientDevice.from_entry(e) for e in entries]
+        clients = [ClientDevice.from_entry(e) for e in entries]
+        status_devs: list = []
+        connect_devs: list = []
+        try:
+            raw = await self._get(PATH_STATUS)
+            status_devs = raw.get("dev", []) if isinstance(raw, dict) else []
+        except MiWiFiConnectionError:
+            pass
+        try:
+            cd = await self._get(PATH_WIFI_CONNECT_DEVICES)
+            connect_devs = cd.get("list", []) if isinstance(cd, dict) else []
+        except MiWiFiConnectionError:
+            pass
+        return merge_client_telemetry(clients, status_devs, connect_devs)
 
     async def async_get_dhcp_reservations(self) -> list[dict]:
         data = await self._get(PATH_MACBIND_INFO)

@@ -42,6 +42,15 @@ WIFI_DETAIL = {"code": 0, "info": [
 LED = {"code": 0, "status": 1}
 MACFILTER = {"code": 0, "flist": [
     {"mac": "AA:BB:CC:DD:EE:FF", "name": "blocked-dev"}]}
+CONNECT_DEVS = {"code": 0, "list": [
+    {"mac": "B8:AE:ED:77:48:B7", "wifiIndex": 2, "signal": 110}]}
+LAN_INFO = {"code": 0, "info": {"mac": "9C:9D:7E:46:DA:7C", "uptime": 153742},
+            "linkList": [0, 1, 0]}
+ROUTER_INFO = {"code": 0, "name": "GW", "mac": "28:D1:27:9F:4C:14",
+               "hardware": "RM1800", "mode": 0}
+STATUS_DEVS = {"code": 0, "dev": [
+    {"mac": "B8:AE:ED:77:48:B7", "downspeed": "7951", "upspeed": "147874",
+     "download": "45258676102", "upload": "38238520331"}]}
 
 
 @pytest.fixture

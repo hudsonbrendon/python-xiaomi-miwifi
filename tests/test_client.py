@@ -467,6 +467,60 @@ async def test_set_wifi_enabled_toggles_radio(host, base):
     await client.async_close()
 
 
+async def test_get_wifi_connect_devices(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_connect_devices",
+              payload=c.CONNECT_DEVS)
+        data = await client.async_get_wifi_connect_devices()
+    assert data["list"][0]["signal"] == 110
+    await client.async_close()
+
+
+async def test_get_clients_is_enriched(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        tok = "TESTTOKEN"
+        m.get(f"{base}/;stok={tok}/api/misystem/devicelist", payload=c.DEVICELIST)
+        m.get(f"{base}/;stok={tok}/api/misystem/status", payload=c.STATUS_DEVS)
+        m.get(f"{base}/;stok={tok}/api/xqnetwork/wifi_connect_devices",
+              payload=c.CONNECT_DEVS)
+        clients = await client.async_get_clients()
+    ha = next(d for d in clients if d.mac == "B8:AE:ED:77:48:B7")
+    assert ha.signal == 110
+    assert ha.band == "5G"
+    assert ha.download_speed == 7951
+    assert ha.upload_total == 38238520331
+    await client.async_close()
+
+
+async def test_luci_request_passthrough(host, base):
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body="<html>key:'k'</html>")
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload={"token": "TESTTOKEN", "code": 0})
+        m.get(f"{base}/;stok=TESTTOKEN/api/misystem/router_info",
+              payload={"code": 0, "mode": 0})
+        data = await client.async_luci_request("api/misystem/router_info")
+    assert data["mode"] == 0
+    await client.async_close()
+
+
 def test_public_exports():
     import xiaomi_miwifi as pkg
 
