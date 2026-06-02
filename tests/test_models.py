@@ -51,7 +51,28 @@ TOPO = {
         ],
     },
 }
-ROM = {"code": 0, "needUpdate": 0, "version": "1.0.394"}
+ROM = {
+    "code": 0, "needUpdate": 0, "version": "1.0.394",
+    "changeLog": "Bug fixes and stability improvements.",
+}
+WAN_STATS = {
+    "code": 0,
+    "statistics": {
+        "download": "123456789", "upload": "987654321",
+        "maxdownloadspeed": "5000000", "maxuploadspeed": "1000000",
+    },
+    "downspeed": "400", "upspeed": "120",
+}
+WIFI_DETAIL = {
+    "code": 0,
+    "info": [
+        {"ifname": "wl0", "ssid": "CASA_396_5G", "encryption": "psk2",
+         "channelInfo": {"channel": 36}, "channel": 36},
+        {"ifname": "wl1", "ssid": "CASA_396_2G", "encryption": "mixed-psk",
+         "channelInfo": {"channel": 6}, "channel": 6},
+    ],
+}
+LED = {"code": 0, "status": 1}
 
 
 def test_parse_status_aggregates_all_sources():
@@ -80,6 +101,43 @@ def test_parse_status_aggregates_all_sources():
     assert len(status.mesh_nodes) == 2
     assert status.mesh_nodes[0].name == "Xiaomi_C54C_3AB3"
     assert status.mesh_nodes[1].model == "Xiaomi Router AX3000T"
+
+
+def test_parse_status_populates_v02_fields():
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        wan_stats=WAN_STATS, wifi_detail=WIFI_DETAIL, led=LED,
+    )
+    # WAN cumulative totals + peak speeds from wan_statistics.
+    assert status.wan_download_total == 123456789
+    assert status.wan_upload_total == 987654321
+    assert status.wan_max_download == 5000000
+    assert status.wan_max_upload == 1000000
+    # Live speeds preferred from wan_statistics (not the dev[] sum).
+    assert status.download_speed == 400
+    assert status.upload_speed == 120
+    # Per-radio channels/encryption (wl1=2.4G, wl0=5G).
+    assert status.channel_24g == 6
+    assert status.channel_5g == 36
+    assert status.encryption_24g == "mixed-psk"
+    assert status.encryption_5g == "psk2"
+    # LED status.
+    assert status.led_on is True
+    # ROM info.
+    assert status.rom_latest_version == "1.0.394"
+    assert status.rom_changelog == "Bug fixes and stability improvements."
+
+
+def test_parse_status_falls_back_to_dev_sum_without_wan_stats():
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM
+    )
+    # No wan_stats -> sum dev[] throughput as before.
+    assert status.upload_speed == 150
+    assert status.download_speed == 225
+    assert status.wan_download_total == 0
+    assert status.led_on is False
+    assert status.channel_24g == 0
 
 
 def test_offline_status_factory():

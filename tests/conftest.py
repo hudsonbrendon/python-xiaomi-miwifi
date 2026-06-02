@@ -30,6 +30,18 @@ DEVICELIST = {"code": 0, "mac": "GW", "list": [
      "parent": "", "isap": 0, "ip": [{"ip": "192.168.31.150"}]}]}
 MACBIND = {"code": 0, "list": [
     {"mac": "11:22:33:44:55:66", "ip": "192.168.31.150", "name": "ha"}]}
+WAN_STATS = {"code": 0, "statistics": {
+    "download": "123456789", "upload": "987654321",
+    "maxdownloadspeed": "5000000", "maxuploadspeed": "1000000"},
+    "downspeed": "400", "upspeed": "120"}
+WIFI_DETAIL = {"code": 0, "info": [
+    {"ifname": "wl0", "ssid": "CASA_396_5G", "encryption": "psk2",
+     "channelInfo": {"channel": 36}, "channel": 36, "status": 1, "hidden": 0},
+    {"ifname": "wl1", "ssid": "CASA_396_2G", "encryption": "mixed-psk",
+     "channelInfo": {"channel": 6}, "channel": 6, "status": 1, "hidden": 0}]}
+LED = {"code": 0, "status": 1}
+MACFILTER = {"code": 0, "flist": [
+    {"mac": "AA:BB:CC:DD:EE:FF", "name": "blocked-dev"}]}
 
 
 @pytest.fixture
