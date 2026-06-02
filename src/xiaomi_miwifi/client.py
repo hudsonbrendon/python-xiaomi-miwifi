@@ -36,7 +36,7 @@ from .const import (
     PATH_WIFI_DOWN,
     PATH_WIFI_UP,
 )
-from .exceptions import MiWiFiAuthError, MiWiFiConnectionError
+from .exceptions import MiWiFiAuthError, MiWiFiConnectionError, MiWiFiError
 from .models import (
     ClientDevice,
     MiWiFiStatus,
@@ -46,6 +46,10 @@ from .models import (
 
 _KEY_RE = re.compile(r"key:\s*'([^']+)'")
 _DEVICEID_RE = re.compile(r"deviceId\s*[=:]\s*'([^']+)'")
+
+# Mutating LuCI paths that must not be reachable through the read-only passthrough.
+_LUCI_BLOCKED_SUBSTRINGS = ("reboot", "set_", "upgrade", "_bind", "_unbind",
+                            "wifi_up", "wifi_down", "mac_filter", "shutdown", "reset")
 
 
 class MiWiFiClient:
@@ -240,12 +244,19 @@ class MiWiFiClient:
         return await self._get(PATH_LAN_INFO)
 
     async def async_luci_request(self, path: str) -> dict:
-        """Generic GET passthrough to any LuCI API path (read-only).
+        """Generic READ-ONLY GET passthrough to any LuCI API path.
 
         ``path`` is the API path WITHOUT the leading ``;stok=`` prefix,
         e.g. ``"api/misystem/router_info"``. Strips a leading slash.
+
+        Mutating paths (reboot, set_*, upgrade, bind/unbind, etc.) are
+        rejected so this cannot change router state.
         """
-        return await self._get(path.lstrip("/"))
+        clean = path.lstrip("/")
+        lowered = clean.lower()
+        if any(b in lowered for b in _LUCI_BLOCKED_SUBSTRINGS):
+            raise MiWiFiError(f"refusing mutating path via read-only request: {path}")
+        return await self._get(clean)
 
     async def async_get_status(self) -> MiWiFiStatus:
         """Aggregate all read endpoints into a MiWiFiStatus.

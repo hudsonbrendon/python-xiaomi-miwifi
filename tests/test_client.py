@@ -521,6 +521,20 @@ async def test_luci_request_passthrough(host, base):
     await client.async_close()
 
 
+async def test_luci_request_blocks_reboot(host):
+    client = MiWiFiClient(host, password="foco2021")
+    with pytest.raises(MiWiFiError):
+        await client.async_luci_request("api/xqsystem/reboot")
+    await client.async_close()
+
+
+async def test_luci_request_blocks_set_led(host):
+    client = MiWiFiClient(host, password="foco2021")
+    with pytest.raises(MiWiFiError):
+        await client.async_luci_request("api/misystem/set_led?on=0")
+    await client.async_close()
+
+
 def test_public_exports():
     import xiaomi_miwifi as pkg
 
