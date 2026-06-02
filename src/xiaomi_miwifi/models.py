@@ -22,6 +22,7 @@ class MeshNode:
     hardware: str
     ssid: str
     mode: int
+    online: bool = True
 
     @property
     def model(self) -> str:
@@ -39,6 +40,7 @@ class MeshNode:
             hardware=entry.get("hardware", ""),
             ssid=entry.get("ssid", ""),
             mode=_to_int(entry.get("mode"), 0),
+            online=True,
         )
 
 
@@ -91,6 +93,17 @@ class MiWiFiStatus:
     upload_speed: int = 0
     download_speed: int = 0
     update_available: bool = False
+    wan_download_total: int = 0
+    wan_upload_total: int = 0
+    wan_max_download: int = 0
+    wan_max_upload: int = 0
+    led_on: bool = False
+    channel_24g: int = 0
+    channel_5g: int = 0
+    encryption_24g: str = ""
+    encryption_5g: str = ""
+    rom_changelog: str = ""
+    rom_latest_version: str = ""
     mesh_nodes: list[MeshNode] = field(default_factory=list)
 
     @property
@@ -105,6 +118,9 @@ def parse_status(
     status: dict,
     topo: dict,
     rom: dict,
+    wan_stats: dict | None = None,
+    wifi_detail: dict | None = None,
+    led: dict | None = None,
 ) -> MiWiFiStatus:
     """Combine the read endpoints into one MiWiFiStatus.
 
@@ -116,6 +132,9 @@ def parse_status(
     status = status if isinstance(status, dict) else {}
     topo = topo if isinstance(topo, dict) else {}
     rom = rom if isinstance(rom, dict) else {}
+    wan_stats = wan_stats if isinstance(wan_stats, dict) else {}
+    wifi_detail = wifi_detail if isinstance(wifi_detail, dict) else {}
+    led = led if isinstance(led, dict) else {}
 
     hw = newstatus.get("hardware", {})
     band24 = newstatus.get("2g", {})
@@ -128,6 +147,33 @@ def parse_status(
     devs = status.get("dev", [])
     up = sum(_to_int(d.get("upspeed")) for d in devs if isinstance(d, dict))
     down = sum(_to_int(d.get("downspeed")) for d in devs if isinstance(d, dict))
+
+    # WAN statistics: cumulative totals + live speeds (preferred over dev[] sum).
+    wstats = (
+        wan_stats.get("statistics", {})
+        if isinstance(wan_stats.get("statistics"), dict)
+        else {}
+    )
+    if wan_stats:
+        up = _to_int(wan_stats.get("upspeed"))
+        down = _to_int(wan_stats.get("downspeed"))
+
+    # Per-radio WiFi detail matched by ifname (wl1=2.4G, wl0=5G).
+    raw_info = wifi_detail.get("info")
+    info = raw_info if isinstance(raw_info, list) else []
+    chan24 = chan5 = 0
+    enc24 = enc5 = ""
+    for radio in info:
+        if not isinstance(radio, dict):
+            continue
+        raw_ci = radio.get("channelInfo")
+        ci = raw_ci if isinstance(raw_ci, dict) else {}
+        channel = _to_int(ci.get("channel", radio.get("channel")))
+        encryption = radio.get("encryption", "")
+        if radio.get("ifname") == "wl1":
+            chan24, enc24 = channel, encryption
+        elif radio.get("ifname") == "wl0":
+            chan5, enc5 = channel, encryption
 
     graph = topo.get("graph", {}) if isinstance(topo.get("graph"), dict) else {}
     leafs = graph.get("leafs", []) if isinstance(graph.get("leafs"), list) else []
@@ -154,5 +200,16 @@ def parse_status(
         upload_speed=up,
         download_speed=down,
         update_available=bool(_to_int(rom.get("needUpdate"))),
+        wan_download_total=_to_int(wstats.get("download")),
+        wan_upload_total=_to_int(wstats.get("upload")),
+        wan_max_download=_to_int(wstats.get("maxdownloadspeed")),
+        wan_max_upload=_to_int(wstats.get("maxuploadspeed")),
+        led_on=_to_int(led.get("status")) == 1,
+        channel_24g=chan24,
+        channel_5g=chan5,
+        encryption_24g=enc24,
+        encryption_5g=enc5,
+        rom_changelog=rom.get("changeLog", ""),
+        rom_latest_version=rom.get("version", ""),
         mesh_nodes=nodes,
     )
