@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## [0.5.0] - 2026-06-02
+
+### Added
+- Reads: `async_get_bandwidth_history`, `async_get_pppoe_status`, `async_get_ddns`, `async_get_dmz`, `async_get_portforward`, `async_get_lan_dhcp`, `async_get_sys_time`.
+- Write controls: `async_run_speed_test`, `async_add_port_forward`, `async_delete_port_forward`, `async_set_dmz`, `async_clear_dmz`, `async_set_ddns`, `async_set_dhcp`.
+- `MiWiFiStatus`: speed-test results, WAN DNS, DDNS/DMZ state, port-forward count, DHCP config, timezone.
+
 ## [0.4.0] - 2026-06-02
 
 ### Added

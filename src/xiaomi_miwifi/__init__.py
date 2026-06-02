@@ -27,4 +27,4 @@ __all__ = [
     "WIFI_INDEX_24G",
     "WIFI_INDEX_5G",
 ]
-__version__ = "0.4.0"
+__version__ = "0.5.0"
