@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from .routers import friendly_model
 
 _WIFI_INDEX_BAND = {1: "2.4G", 2: "5G", 3: "5G Game"}
+_MODE_NAMES = {0: "Router", 1: "Repeater", 2: "Access Point", 9: "Mesh"}
 
 
 def _to_int(value: object, default: int = 0) -> int:
@@ -147,10 +148,20 @@ class MiWiFiStatus:
     rom_changelog: str = ""
     rom_latest_version: str = ""
     mesh_nodes: list[MeshNode] = field(default_factory=list)
+    mode: int = 0
+    lan_ports: list[bool] = field(default_factory=list)
 
     @property
     def model(self) -> str:
         return friendly_model(self.hardware)
+
+    @property
+    def mode_name(self) -> str:
+        return _MODE_NAMES.get(self.mode, f"Mode {self.mode}")
+
+    @property
+    def lan_ports_active(self) -> int:
+        return sum(1 for up in self.lan_ports if up)
 
 
 def parse_status(
@@ -163,6 +174,8 @@ def parse_status(
     wan_stats: dict | None = None,
     wifi_detail: dict | None = None,
     led: dict | None = None,
+    router_info: dict | None = None,
+    lan_info: dict | None = None,
 ) -> MiWiFiStatus:
     """Combine the read endpoints into one MiWiFiStatus.
 
@@ -177,6 +190,8 @@ def parse_status(
     wan_stats = wan_stats if isinstance(wan_stats, dict) else {}
     wifi_detail = wifi_detail if isinstance(wifi_detail, dict) else {}
     led = led if isinstance(led, dict) else {}
+    router_info = router_info if isinstance(router_info, dict) else {}
+    lan_info = lan_info if isinstance(lan_info, dict) else {}
 
     hw = newstatus.get("hardware", {})
     band24 = newstatus.get("2g", {})
@@ -221,6 +236,13 @@ def parse_status(
     leafs = graph.get("leafs", []) if isinstance(graph.get("leafs"), list) else []
     nodes = [MeshNode.from_entry(leaf) for leaf in leafs if isinstance(leaf, dict)]
 
+    link_list = lan_info.get("linkList")
+    lan_ports = (
+        [bool(_to_int(x)) for x in link_list]
+        if isinstance(link_list, list)
+        else []
+    )
+
     return MiWiFiStatus(
         online=True,
         hardware=hw.get("platform", ""),
@@ -254,4 +276,6 @@ def parse_status(
         rom_changelog=rom.get("changeLog", ""),
         rom_latest_version=rom.get("version", ""),
         mesh_nodes=nodes,
+        mode=_to_int(router_info.get("mode")),
+        lan_ports=lan_ports,
     )

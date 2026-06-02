@@ -193,6 +193,27 @@ def test_parse_status_skips_non_dict_list_elements():
     assert status.mesh_nodes == []
 
 
+def test_parse_status_mode_and_lan_ports():
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        router_info={"mode": 0}, lan_info={"linkList": [0, 1, 0]},
+    )
+    assert status.mode == 0
+    assert status.mode_name == "Router"
+    assert status.lan_ports == [False, True, False]
+    assert status.lan_ports_active == 1
+
+
+def test_parse_status_mode_unknown_and_no_lan():
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        router_info={"mode": 7}, lan_info=None,
+    )
+    assert status.mode_name == "Mode 7"
+    assert status.lan_ports == []
+    assert status.lan_ports_active == 0
+
+
 def test_client_device_from_empty_entry():
     dev = ClientDevice.from_entry({})
     assert isinstance(dev, ClientDevice)
