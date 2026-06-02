@@ -53,8 +53,8 @@ async def test_login_failure_raises_auth_error(host, base):
         m.get(f"{base}/web", body=LOGIN_HTML)
         m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
                payload={"code": 401})
-    with pytest.raises(MiWiFiAuthError):
-        await client.async_login()
+        with pytest.raises(MiWiFiAuthError):
+            await client.async_login()
     await client.async_close()
 
 
