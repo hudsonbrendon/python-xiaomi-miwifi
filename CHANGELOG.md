@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [0.4.0] - 2026-06-02
+
+### Added
+- `async_get_available_channels`, `async_get_init_info`, `async_get_qos_info`.
+- Write controls: `async_set_wifi_channel`, `async_set_wifi_txpwr` (read-modify-write over set_wifi), `async_set_qos`.
+- `MiWiFiStatus.txpwr_24g`/`txpwr_5g`, `country_code`, `qos_on`.
+- Full ~45-model `SUPPORTED_ROUTERS` table incl. RC06 and RD03.
+
 ## [0.3.0] - 2026-06-02
 
 ### Added

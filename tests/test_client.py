@@ -672,7 +672,7 @@ async def test_set_wifi_channel_unknown_index_raises(host, base):
 def test_public_exports():
     import xiaomi_miwifi as pkg
 
-    assert pkg.__version__ == "0.3.0"
+    assert pkg.__version__ == "0.4.0"
     assert pkg.MiWiFiClient is not None
     assert pkg.MiWiFiStatus is not None
     assert pkg.MiWiFiConnectionError is not None
