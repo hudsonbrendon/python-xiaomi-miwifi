@@ -16,9 +16,13 @@ from .const import (
     HTTP_TIMEOUT,
     HTTP_TIMEOUT_SLOW,
     PATH_AVAILABLE_CHANNELS,
+    PATH_BANDWIDTH_TEST,
     PATH_CHECK_ROM,
+    PATH_DDNS,
     PATH_DEVICELIST,
+    PATH_DMZ,
     PATH_INIT_INFO,
+    PATH_LAN_DHCP,
     PATH_LAN_INFO,
     PATH_LED,
     PATH_LOGIN,
@@ -27,6 +31,8 @@ from .const import (
     PATH_MACBIND_INFO,
     PATH_MACFILTER_INFO,
     PATH_NEWSTATUS,
+    PATH_PORTFORWARD,
+    PATH_PPPOE_STATUS,
     PATH_QOS_INFO,
     PATH_QOS_SWITCH,
     PATH_REBOOT,
@@ -34,6 +40,7 @@ from .const import (
     PATH_SET_MAC_FILTER,
     PATH_SET_WIFI,
     PATH_STATUS,
+    PATH_SYS_TIME,
     PATH_TOPO_GRAPH,
     PATH_WAN_INFO,
     PATH_WAN_STATISTICS,
@@ -265,6 +272,27 @@ class MiWiFiClient:
     async def async_get_qos_info(self) -> dict:
         return await self._get(PATH_QOS_INFO)
 
+    async def async_get_bandwidth_history(self) -> dict:
+        return await self._get(f"{PATH_BANDWIDTH_TEST}?history=1")
+
+    async def async_get_pppoe_status(self) -> dict:
+        return await self._get(PATH_PPPOE_STATUS)
+
+    async def async_get_ddns(self) -> dict:
+        return await self._get(PATH_DDNS)
+
+    async def async_get_dmz(self) -> dict:
+        return await self._get(PATH_DMZ)
+
+    async def async_get_portforward(self, ftype: int = 1) -> dict:
+        return await self._get(f"{PATH_PORTFORWARD}?ftype={ftype}")
+
+    async def async_get_lan_dhcp(self) -> dict:
+        return await self._get(PATH_LAN_DHCP)
+
+    async def async_get_sys_time(self) -> dict:
+        return await self._get(PATH_SYS_TIME)
+
     async def async_luci_request(self, path: str) -> dict:
         """Generic READ-ONLY GET passthrough to any LuCI API path.
 
@@ -300,6 +328,13 @@ class MiWiFiClient:
         lan_info = await self._safe_get(PATH_LAN_INFO)
         init_info = await self._safe_get(PATH_INIT_INFO)
         qos_info = await self._safe_get(PATH_QOS_INFO)
+        bandwidth_history = await self._safe_get(f"{PATH_BANDWIDTH_TEST}?history=1")
+        pppoe = await self._safe_get(PATH_PPPOE_STATUS)
+        ddns = await self._safe_get(PATH_DDNS)
+        dmz = await self._safe_get(PATH_DMZ)
+        portforward = await self._safe_get(f"{PATH_PORTFORWARD}?ftype=1")
+        lan_dhcp = await self._safe_get(PATH_LAN_DHCP)
+        sys_time = await self._safe_get(PATH_SYS_TIME)
 
         return parse_status(
             newstatus=newstatus,
@@ -314,6 +349,13 @@ class MiWiFiClient:
             lan_info=lan_info,
             init_info=init_info,
             qos_info=qos_info,
+            bandwidth_history=bandwidth_history,
+            pppoe=pppoe,
+            ddns=ddns,
+            dmz=dmz,
+            portforward=portforward,
+            lan_dhcp=lan_dhcp,
+            sys_time=sys_time,
         )
 
     async def async_get_blocked_devices(self) -> list[dict]:

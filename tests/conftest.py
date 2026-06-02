@@ -69,6 +69,19 @@ WIFI_DETAIL_TX = {"code": 0, "info": [
      "txpwr": "mid", "hidden": "0", "ax": "0", "txbf": "3"}]}
 
 
+BANDWIDTH_HISTORY = {"code": 0, "download": 865.28, "upload": 1553.92,
+                     "bandwidth": 6.76, "bandwidth2": 12.14}
+PPPOE = {"code": 0, "proto": "dhcp", "dns": ["1.1.1.1", "8.8.8.8"],
+         "gw": "100.107.32.1"}
+DDNS = {"code": 0, "on": 0, "list": []}
+DMZ = {"code": 0, "status": 0, "lanip": "192.168.31.1"}
+PORTFORWARD = {"code": 0, "status": 0, "list": []}
+LAN_DHCP = {"code": 0, "info": {"leasetimeNum": "720", "limit": "250",
+            "start": "5", "leasetime": "720m"}}
+SYS_TIME = {"code": 0, "role": "whc_cap",
+            "time": {"timezone": "CST-8", "year": 2026}}
+
+
 @pytest.fixture
 def host():
     return "192.168.31.1"

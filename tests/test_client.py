@@ -692,3 +692,35 @@ def test_public_exports():
     assert pkg.MiWiFiConnectionError is not None
     assert pkg.MiWiFiAuthError is not None
     assert pkg.friendly_model("RM1800") == "Xiaomi Router AX1800"
+
+
+async def test_v05_read_endpoints(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        tok = "TESTTOKEN"
+        m.get(re.compile(
+            rf"{re.escape(base)}/;stok={tok}/api/misystem/bandwidth_test.*"),
+            payload=c.BANDWIDTH_HISTORY)
+        m.get(f"{base}/;stok={tok}/api/xqnetwork/pppoe_status", payload=c.PPPOE)
+        m.get(f"{base}/;stok={tok}/api/xqnetwork/ddns", payload=c.DDNS)
+        m.get(f"{base}/;stok={tok}/api/xqnetwork/dmz", payload=c.DMZ)
+        m.get(re.compile(rf"{re.escape(base)}/;stok={tok}/api/xqnetwork/portforward.*"),
+              payload=c.PORTFORWARD)
+        bw = await client.async_get_bandwidth_history()
+        pppoe = await client.async_get_pppoe_status()
+        ddns = await client.async_get_ddns()
+        dmz = await client.async_get_dmz()
+        pf = await client.async_get_portforward()
+    assert bw["download"] == 865.28
+    assert pppoe["dns"] == ["1.1.1.1", "8.8.8.8"]
+    assert ddns["on"] == 0
+    assert dmz["status"] == 0
+    assert pf["list"] == []
+    await client.async_close()
