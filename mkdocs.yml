@@ -1,0 +1,15 @@
+site_name: python-xiaomi-miwifi
+site_description: Async Python client for Xiaomi / MiWiFi routers
+repo_url: https://github.com/hudsonbrendon/python-xiaomi-miwifi
+theme:
+  name: material
+  palette:
+    primary: deep orange
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+nav:
+  - Home: index.md

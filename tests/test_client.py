@@ -1,0 +1,278 @@
+import json
+import re
+
+import aiohttp
+import pytest
+from aioresponses import aioresponses
+
+from xiaomi_miwifi import const
+from xiaomi_miwifi.client import MiWiFiClient
+from xiaomi_miwifi.exceptions import (
+    MiWiFiAuthError,
+    MiWiFiConnectionError,
+    MiWiFiError,
+)
+
+
+def test_exception_hierarchy():
+    assert issubclass(MiWiFiConnectionError, MiWiFiError)
+    assert issubclass(MiWiFiAuthError, MiWiFiError)
+
+
+def test_const_paths_present():
+    assert const.DEFAULT_PORT == 80
+    assert const.PATH_LOGIN == "api/xqsystem/login"
+    assert const.PATH_NEWSTATUS == "api/misystem/newstatus"
+    assert const.PATH_WAN_INFO == "api/xqnetwork/wan_info"
+    assert const.PATH_TOPO_GRAPH == "api/misystem/topo_graph"
+    assert const.PATH_CHECK_ROM == "api/xqsystem/check_rom_update"
+    assert const.PATH_MACBIND_INFO == "api/xqnetwork/macbind_info"
+    assert const.PATH_MAC_BIND == "api/xqnetwork/mac_bind"
+    assert const.PATH_MAC_UNBIND == "api/xqnetwork/mac_unbind"
+    assert const.PATH_REBOOT == "api/xqsystem/reboot"
+
+
+async def test_login_parses_key_and_sets_token(host, base):
+    from tests.conftest import LOGIN_HTML, LOGIN_OK
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"), payload=LOGIN_OK)
+        token = await client.async_login()
+    assert token == "TESTTOKEN"
+    assert client.token == "TESTTOKEN"
+    await client.async_close()
+
+
+async def test_login_failure_raises_auth_error(host, base):
+    from tests.conftest import LOGIN_HTML
+
+    client = MiWiFiClient(host, password="wrong")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload={"code": 401})
+    with pytest.raises(MiWiFiAuthError):
+        await client.async_login()
+    await client.async_close()
+
+
+async def test_get_status_aggregates_live_endpoints(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        tok = "TESTTOKEN"
+        m.get(f"{base}/;stok={tok}/api/misystem/newstatus", payload=c.NEWSTATUS)
+        m.get(f"{base}/;stok={tok}/api/xqnetwork/wan_info", payload=c.WAN)
+        m.get(f"{base}/;stok={tok}/api/misystem/status", payload=c.STATUS)
+        m.get(f"{base}/;stok={tok}/api/misystem/topo_graph", payload=c.TOPO)
+        m.get(f"{base}/;stok={tok}/api/xqsystem/check_rom_update", payload=c.ROM)
+        status = await client.async_get_status()
+    assert status.online is True
+    assert status.client_count == 90
+    assert status.download_speed == 225
+    assert status.mesh_node_count == 2
+    assert status.model == "Xiaomi Router AX1800"
+    await client.async_close()
+
+
+async def test_get_clients_parses_devicelist(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(f"{base}/;stok=TESTTOKEN/api/misystem/devicelist", payload=c.DEVICELIST)
+        clients = await client.async_get_clients()
+    assert len(clients) == 1
+    assert clients[0].name == "homeassistant"
+    assert clients[0].ip == "192.168.31.150"
+    await client.async_close()
+
+
+async def test_get_dhcp_reservations(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/macbind_info", payload=c.MACBIND)
+        res = await client.async_get_dhcp_reservations()
+    assert res == [{"mac": "11:22:33:44:55:66", "ip": "192.168.31.150", "name": "ha"}]
+    await client.async_close()
+
+
+async def test_set_dhcp_reservation_sends_full_list(host, base):
+    from tests import conftest as c
+
+    captured: dict = {}
+
+    def _capture(url, **kwargs):
+        captured["data"] = kwargs.get("data")
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/macbind_info", payload=c.MACBIND)
+        m.post(
+            f"{base}/;stok=TESTTOKEN/api/xqnetwork/mac_bind",
+            payload={"code": 0},
+            callback=_capture,
+        )
+        ok = await client.async_add_dhcp_reservation(
+            "AA:BB:CC:DD:EE:FF", "192.168.31.77", "newdev"
+        )
+    assert ok is True
+
+    # The POSTed body must be the FULL merged list: pre-existing + new.
+    posted = json.loads(captured["data"]["data"])
+    assert posted == [
+        {"mac": "11:22:33:44:55:66", "ip": "192.168.31.150", "name": "ha"},
+        {"mac": "AA:BB:CC:DD:EE:FF", "ip": "192.168.31.77", "name": "newdev"},
+    ]
+    await client.async_close()
+
+
+async def test_request_relogins_and_retries_on_401(host, base):
+    """A 401 on the first authenticated call triggers re-login then succeeds."""
+    from tests import conftest as c
+
+    login_calls = 0
+
+    def _count_login(url, **kwargs):
+        nonlocal login_calls
+        login_calls += 1
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        # aioresponses matches each registration once, in order.
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+            callback=_count_login,
+        )
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+            callback=_count_login,
+        )
+        url = f"{base}/;stok=TESTTOKEN/api/misystem/newstatus"
+        m.get(url, payload={"code": 401})
+        m.get(url, payload=c.NEWSTATUS)
+        result = await client.async_get_newstatus()
+    assert result == c.NEWSTATUS
+    assert login_calls == 2
+    await client.async_close()
+
+
+async def test_request_401_twice_does_not_recurse(host, base):
+    """Two consecutive 401s return the 401 payload (bounded by _retry=False)."""
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        url = f"{base}/;stok=TESTTOKEN/api/misystem/newstatus"
+        m.get(url, payload={"code": 401})
+        m.get(url, payload={"code": 401})
+        result = await client.async_get_newstatus()
+    assert result == {"code": 401}
+    await client.async_close()
+
+
+async def test_login_non_json_raises_connection_error(host, base):
+    """A captive-portal HTML login response raises MiWiFiConnectionError."""
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            body="<html>captive portal</html>",
+        )
+        with pytest.raises(MiWiFiConnectionError):
+            await client.async_login()
+    await client.async_close()
+
+
+async def test_closed_caller_session_raises(host):
+    """A caller-supplied session that is closed must not be silently replaced."""
+    session = aiohttp.ClientSession()
+    await session.close()
+    client = MiWiFiClient(host, password="foco2021", session=session)
+    with pytest.raises(MiWiFiConnectionError, match="provided session is closed"):
+        await client._ensure_session()
+
+
+async def test_reboot_posts_reboot_endpoint(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqsystem/reboot", payload={"code": 0})
+        ok = await client.async_reboot()
+    assert ok is True
+    await client.async_close()
+
+
+async def test_set_wifi_enabled_toggles_radio(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.post(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_down", payload={"code": 0})
+        ok = await client.async_set_wifi_enabled("wl0", False)
+    assert ok is True
+    await client.async_close()
+
+
+def test_public_exports():
+    import xiaomi_miwifi as pkg
+
+    assert pkg.__version__ == "0.1.0"
+    assert pkg.MiWiFiClient is not None
+    assert pkg.MiWiFiStatus is not None
+    assert pkg.MiWiFiConnectionError is not None
+    assert pkg.MiWiFiAuthError is not None
+    assert pkg.friendly_model("RM1800") == "Xiaomi Router AX1800"

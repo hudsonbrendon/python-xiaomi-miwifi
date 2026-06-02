@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "python-xiaomi-miwifi"
+version = "0.1.0"
+description = "Async Python client for Xiaomi / MiWiFi routers over the LuCI HTTP API"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Hudson Brendon", email = "contato.hudsonbrendon@gmail.com"}]
+keywords = ["xiaomi", "miwifi", "router", "mesh", "home-assistant", "async", "aiohttp"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Framework :: AsyncIO",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries",
+]
+dependencies = ["aiohttp>=3.9"]
+
+[project.urls]
+Homepage = "https://github.com/hudsonbrendon/python-xiaomi-miwifi"
+Documentation = "https://hudsonbrendon.github.io/python-xiaomi-miwifi/"
+Issues = "https://github.com/hudsonbrendon/python-xiaomi-miwifi/issues"
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.23", "aioresponses>=0.7", "aiohttp<3.13", "ruff"]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.25"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xiaomi_miwifi"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q"
