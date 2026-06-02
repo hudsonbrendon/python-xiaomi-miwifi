@@ -46,6 +46,20 @@ def test_const_paths_present():
     assert const.WIFI_INDEX_24G == 1
     assert const.WIFI_INDEX_5G == 2
     assert const.TXPWR_OPTIONS == ("max", "mid", "min")
+    assert const.PATH_BANDWIDTH_TEST == "api/misystem/bandwidth_test"
+    assert const.PATH_PPPOE_STATUS == "api/xqnetwork/pppoe_status"
+    assert const.PATH_DDNS == "api/xqnetwork/ddns"
+    assert const.PATH_DMZ == "api/xqnetwork/dmz"
+    assert const.PATH_PORTFORWARD == "api/xqnetwork/portforward"
+    assert const.PATH_LAN_DHCP == "api/xqnetwork/lan_dhcp"
+    assert const.PATH_SYS_TIME == "api/misystem/sys_time"
+    assert const.PATH_ADD_REDIRECT == "api/xqnetwork/add_redirect"
+    assert const.PATH_DELETE_REDIRECT == "api/xqnetwork/delete_redirect"
+    assert const.PATH_REDIRECT_APPLY == "api/xqnetwork/redirect_apply"
+    assert const.PATH_SET_DMZ == "api/xqnetwork/set_dmz"
+    assert const.PATH_DMZ_OFF == "api/xqnetwork/dmz_off"
+    assert const.PATH_DDNS_SWITCH == "api/xqnetwork/ddns_switch"
+    assert const.PATH_SET_LAN_DHCP == "api/xqnetwork/set_lan_dhcp"
 
 
 async def test_login_parses_key_and_sets_token(host, base):
