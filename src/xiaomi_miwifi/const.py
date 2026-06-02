@@ -35,6 +35,19 @@ PATH_WIFI_UP = "api/xqnetwork/wifi_up"
 PATH_WIFI_DOWN = "api/xqnetwork/wifi_down"
 PATH_SET_MAC_FILTER = "api/xqnetwork/set_mac_filter"
 
+PATH_AVAILABLE_CHANNELS = "api/xqnetwork/avaliable_channels"
+PATH_SET_WIFI = "api/xqnetwork/set_wifi"
+PATH_QOS_INFO = "api/misystem/qos_info"
+PATH_QOS_SWITCH = "api/misystem/qos_switch"
+PATH_INIT_INFO = "api/xqsystem/init_info"
+
+# wifi_detail_all / avaliable_channels index per band
+WIFI_INDEX_24G = 1
+WIFI_INDEX_5G = 2
+
+# transmit power levels accepted by set_wifi txpwr
+TXPWR_OPTIONS = ("max", "mid", "min")
+
 # Radio interface names (from wifi_detail_all: wl0=5G, wl1=2.4G on RM1800)
 IFNAME_5G = "wl0"
 IFNAME_24G = "wl1"

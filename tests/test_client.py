@@ -38,6 +38,14 @@ def test_const_paths_present():
     assert const.PATH_SET_MAC_FILTER == "api/xqnetwork/set_mac_filter"
     assert const.PATH_WIFI_CONNECT_DEVICES == "api/xqnetwork/wifi_connect_devices"
     assert const.PATH_LAN_INFO == "api/xqnetwork/lan_info"
+    assert const.PATH_AVAILABLE_CHANNELS == "api/xqnetwork/avaliable_channels"
+    assert const.PATH_SET_WIFI == "api/xqnetwork/set_wifi"
+    assert const.PATH_QOS_INFO == "api/misystem/qos_info"
+    assert const.PATH_QOS_SWITCH == "api/misystem/qos_switch"
+    assert const.PATH_INIT_INFO == "api/xqsystem/init_info"
+    assert const.WIFI_INDEX_24G == 1
+    assert const.WIFI_INDEX_5G == 2
+    assert const.TXPWR_OPTIONS == ("max", "mid", "min")
 
 
 async def test_login_parses_key_and_sets_token(host, base):
