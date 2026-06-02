@@ -214,6 +214,35 @@ def test_parse_status_mode_unknown_and_no_lan():
     assert status.lan_ports_active == 0
 
 
+def test_parse_status_txpwr_country_qos():
+    wifi_detail = {"info": [
+        {"ifname": "wl1", "channelInfo": {"channel": 6}, "encryption": "mixed-psk",
+         "txpwr": "max"},
+        {"ifname": "wl0", "channelInfo": {"channel": 36}, "encryption": "mixed-psk",
+         "txpwr": "mid"},
+    ]}
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        wifi_detail=wifi_detail,
+        init_info={"countrycode": "CN", "model": "xiaomi.router.rm1800"},
+        qos_info={"status": {"on": 1}},
+    )
+    assert status.txpwr_24g == "max"
+    assert status.txpwr_5g == "mid"
+    assert status.country_code == "CN"
+    assert status.qos_on is True
+
+
+def test_parse_status_qos_off_and_no_init():
+    status = parse_status(
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        qos_info={"status": {"on": 0}}, init_info=None,
+    )
+    assert status.qos_on is False
+    assert status.country_code == ""
+    assert status.txpwr_24g == ""
+
+
 def test_client_device_from_empty_entry():
     dev = ClientDevice.from_entry({})
     assert isinstance(dev, ClientDevice)

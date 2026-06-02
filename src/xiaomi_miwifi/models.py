@@ -145,6 +145,10 @@ class MiWiFiStatus:
     channel_5g: int = 0
     encryption_24g: str = ""
     encryption_5g: str = ""
+    txpwr_24g: str = ""
+    txpwr_5g: str = ""
+    country_code: str = ""
+    qos_on: bool = False
     rom_changelog: str = ""
     rom_latest_version: str = ""
     mesh_nodes: list[MeshNode] = field(default_factory=list)
@@ -176,6 +180,8 @@ def parse_status(
     led: dict | None = None,
     router_info: dict | None = None,
     lan_info: dict | None = None,
+    init_info=None,
+    qos_info=None,
 ) -> MiWiFiStatus:
     """Combine the read endpoints into one MiWiFiStatus.
 
@@ -192,6 +198,8 @@ def parse_status(
     led = led if isinstance(led, dict) else {}
     router_info = router_info if isinstance(router_info, dict) else {}
     lan_info = lan_info if isinstance(lan_info, dict) else {}
+    init_info = init_info if isinstance(init_info, dict) else {}
+    qos_info = qos_info if isinstance(qos_info, dict) else {}
 
     hw = newstatus.get("hardware", {})
     band24 = newstatus.get("2g", {})
@@ -220,6 +228,7 @@ def parse_status(
     info = raw_info if isinstance(raw_info, list) else []
     chan24 = chan5 = 0
     enc24 = enc5 = ""
+    txpwr_24g = txpwr_5g = ""
     for radio in info:
         if not isinstance(radio, dict):
             continue
@@ -227,10 +236,11 @@ def parse_status(
         ci = raw_ci if isinstance(raw_ci, dict) else {}
         channel = _to_int(ci.get("channel", radio.get("channel")))
         encryption = radio.get("encryption", "")
+        txpwr = radio.get("txpwr", "")
         if radio.get("ifname") == "wl1":
-            chan24, enc24 = channel, encryption
+            chan24, enc24, txpwr_24g = channel, encryption, txpwr
         elif radio.get("ifname") == "wl0":
-            chan5, enc5 = channel, encryption
+            chan5, enc5, txpwr_5g = channel, encryption, txpwr
 
     graph = topo.get("graph", {}) if isinstance(topo.get("graph"), dict) else {}
     leafs = graph.get("leafs", []) if isinstance(graph.get("leafs"), list) else []
@@ -273,6 +283,10 @@ def parse_status(
         channel_5g=chan5,
         encryption_24g=enc24,
         encryption_5g=enc5,
+        txpwr_24g=txpwr_24g,
+        txpwr_5g=txpwr_5g,
+        country_code=init_info.get("countrycode", ""),
+        qos_on=bool(_to_int((qos_info.get("status") or {}).get("on"))),
         rom_changelog=rom.get("changeLog", ""),
         rom_latest_version=rom.get("version", ""),
         mesh_nodes=nodes,
