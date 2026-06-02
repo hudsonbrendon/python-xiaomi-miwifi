@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 
 from .routers import friendly_model
 
+_WIFI_INDEX_BAND = {1: "2.4G", 2: "5G", 3: "5G Game"}
+
 
 def _to_int(value: object, default: int = 0) -> int:
     try:
@@ -54,6 +56,12 @@ class ClientDevice:
     online: bool
     parent: str
     is_router: bool
+    signal: int = 0
+    band: str = ""
+    download_speed: int = 0
+    upload_speed: int = 0
+    download_total: int = 0
+    upload_total: int = 0
 
     @classmethod
     def from_entry(cls, entry: dict) -> ClientDevice:
@@ -67,6 +75,40 @@ class ClientDevice:
             parent=entry.get("parent", ""),
             is_router=_to_int(entry.get("isap")) != 0,
         )
+
+
+def merge_client_telemetry(
+    clients: list[ClientDevice],
+    status_devs: list,
+    connect_devs: list,
+) -> list[ClientDevice]:
+    """Merge per-device speed/traffic (misystem/status) and signal/band
+    (wifi_connect_devices) into the ClientDevice list, matched by MAC
+    (case-insensitive). Unmatched clients keep their zero defaults.
+    """
+    by_status = {
+        d["mac"].upper(): d
+        for d in status_devs
+        if isinstance(d, dict) and d.get("mac")
+    }
+    by_signal = {
+        d["mac"].upper(): d
+        for d in connect_devs
+        if isinstance(d, dict) and d.get("mac")
+    }
+    for client in clients:
+        mac = client.mac.upper()
+        st = by_status.get(mac)
+        if st:
+            client.download_speed = _to_int(st.get("downspeed"))
+            client.upload_speed = _to_int(st.get("upspeed"))
+            client.download_total = _to_int(st.get("download"))
+            client.upload_total = _to_int(st.get("upload"))
+        sig = by_signal.get(mac)
+        if sig:
+            client.signal = _to_int(sig.get("signal"))
+            client.band = _WIFI_INDEX_BAND.get(_to_int(sig.get("wifiIndex")), "")
+    return clients
 
 
 @dataclass

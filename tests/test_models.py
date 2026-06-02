@@ -216,3 +216,55 @@ def test_client_device_from_devicelist_entry():
     assert dev.ip == "192.168.31.150"
     assert dev.online is True
     assert dev.is_router is False
+
+
+def test_client_device_enrichment_defaults():
+    dev = ClientDevice.from_entry(
+        {"name": "tv", "mac": "AA:BB", "online": 1, "ip": [{"ip": "192.168.31.9"}]}
+    )
+    assert dev.signal == 0
+    assert dev.band == ""
+    assert dev.download_speed == 0
+    assert dev.upload_speed == 0
+    assert dev.download_total == 0
+    assert dev.upload_total == 0
+
+
+def test_merge_client_telemetry():
+    from xiaomi_miwifi.models import merge_client_telemetry
+
+    base = [
+        ClientDevice.from_entry(
+            {"name": "tv", "mac": "AA:BB:CC:DD:EE:01", "online": 1,
+             "ip": [{"ip": "192.168.31.9"}]}
+        )
+    ]
+    status_devs = [
+        {"mac": "aa:bb:cc:dd:ee:01", "downspeed": "1000", "upspeed": "200",
+         "download": "5000000", "upload": "900000"}
+    ]
+    connect_devs = [
+        {"mac": "AA:BB:CC:DD:EE:01", "wifiIndex": 2, "signal": 110}
+    ]
+    merged = merge_client_telemetry(base, status_devs, connect_devs)
+    d = merged[0]
+    assert d.download_speed == 1000
+    assert d.upload_speed == 200
+    assert d.download_total == 5000000
+    assert d.upload_total == 900000
+    assert d.signal == 110
+    assert d.band == "5G"
+
+
+def test_merge_client_telemetry_tolerates_missing_and_bad():
+    from xiaomi_miwifi.models import merge_client_telemetry
+
+    base = [
+        ClientDevice.from_entry(
+            {"name": "x", "mac": "11:22", "online": 1, "ip": []}
+        )
+    ]
+    # no matching telemetry, plus a junk non-dict element
+    merged = merge_client_telemetry(base, [None, {}], [None])
+    assert merged[0].signal == 0
+    assert merged[0].band == ""
