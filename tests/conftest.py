@@ -51,6 +51,22 @@ ROUTER_INFO = {"code": 0, "name": "GW", "mac": "28:D1:27:9F:4C:14",
 STATUS_DEVS = {"code": 0, "dev": [
     {"mac": "B8:AE:ED:77:48:B7", "downspeed": "7951", "upspeed": "147874",
      "download": "45258676102", "upload": "38238520331"}]}
+AVAIL_CH_24 = {"code": 0, "list": [
+    {"c": "0", "b": ["20", "40"]}, {"c": "1", "b": ["20", "40"]},
+    {"c": "6", "b": ["20", "40"]}, {"c": "11", "b": ["20", "40"]}]}
+AVAIL_CH_5 = {"code": 0, "list": [
+    {"c": "0", "b": ["20", "40", "80"]}, {"c": "36", "b": ["20", "40", "80"]},
+    {"c": "149", "b": ["20", "40", "80"]}]}
+INIT_INFO = {"code": 0, "countrycode": "CN", "model": "xiaomi.router.rm1800",
+             "id": "27450/X", "hardware": "RM1800", "romversion": "1.0.394"}
+QOS_INFO = {"code": 0, "status": {"on": 1, "mode": 0}}
+WIFI_DETAIL_TX = {"code": 0, "info": [
+    {"ifname": "wl1", "ssid": "CASA_2G", "password": "p", "encryption": "mixed-psk",
+     "channelInfo": {"channel": 6, "bandwidth": "0"}, "channel": "0",
+     "txpwr": "max", "hidden": "0", "ax": "0", "txbf": "3"},
+    {"ifname": "wl0", "ssid": "CASA_5G", "password": "p", "encryption": "mixed-psk",
+     "channelInfo": {"channel": 36, "bandwidth": "0"}, "channel": "0",
+     "txpwr": "mid", "hidden": "0", "ax": "0", "txbf": "3"}]}
 
 
 @pytest.fixture

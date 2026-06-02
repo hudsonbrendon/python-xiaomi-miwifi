@@ -543,6 +543,39 @@ async def test_luci_request_blocks_set_led(host):
     await client.async_close()
 
 
+async def test_get_available_channels(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload=c.LOGIN_OK)
+        m.get(re.compile(
+            rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/avaliable_channels.*"),
+            payload=c.AVAIL_CH_24)
+        chans = await client.async_get_available_channels(1)
+    assert chans == ["0", "1", "6", "11"]
+    await client.async_close()
+
+
+async def test_get_init_info_and_qos(host, base):
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+               payload=c.LOGIN_OK)
+        m.get(f"{base}/;stok=TESTTOKEN/api/xqsystem/init_info", payload=c.INIT_INFO)
+        m.get(f"{base}/;stok=TESTTOKEN/api/misystem/qos_info", payload=c.QOS_INFO)
+        info = await client.async_get_init_info()
+        qos = await client.async_get_qos_info()
+    assert info["countrycode"] == "CN"
+    assert qos["status"]["on"] == 1
+    await client.async_close()
+
+
 def test_public_exports():
     import xiaomi_miwifi as pkg
 

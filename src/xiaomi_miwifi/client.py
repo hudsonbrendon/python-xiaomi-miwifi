@@ -14,8 +14,10 @@ from .const import (
     DEFAULT_PORT,
     HTTP_TIMEOUT,
     HTTP_TIMEOUT_SLOW,
+    PATH_AVAILABLE_CHANNELS,
     PATH_CHECK_ROM,
     PATH_DEVICELIST,
+    PATH_INIT_INFO,
     PATH_LAN_INFO,
     PATH_LED,
     PATH_LOGIN,
@@ -24,6 +26,7 @@ from .const import (
     PATH_MACBIND_INFO,
     PATH_MACFILTER_INFO,
     PATH_NEWSTATUS,
+    PATH_QOS_INFO,
     PATH_REBOOT,
     PATH_ROUTER_INFO,
     PATH_SET_MAC_FILTER,
@@ -243,6 +246,20 @@ class MiWiFiClient:
     async def async_get_lan_info(self) -> dict:
         return await self._get(PATH_LAN_INFO)
 
+    async def async_get_available_channels(self, wifi_index: int) -> list[str]:
+        """Return the list of channel numbers (as strings; "0" = auto)
+        available for a band. wifi_index: 1 = 2.4G, 2 = 5G.
+        """
+        data = await self._get(f"{PATH_AVAILABLE_CHANNELS}?wifiIndex={wifi_index}")
+        items = data.get("list", []) if isinstance(data, dict) else []
+        return [str(i.get("c")) for i in items if isinstance(i, dict) and "c" in i]
+
+    async def async_get_init_info(self) -> dict:
+        return await self._get(PATH_INIT_INFO)
+
+    async def async_get_qos_info(self) -> dict:
+        return await self._get(PATH_QOS_INFO)
+
     async def async_luci_request(self, path: str) -> dict:
         """Generic READ-ONLY GET passthrough to any LuCI API path.
 
@@ -276,6 +293,8 @@ class MiWiFiClient:
         led = await self._safe_get(PATH_LED)
         router_info = await self._safe_get(PATH_ROUTER_INFO)
         lan_info = await self._safe_get(PATH_LAN_INFO)
+        init_info = await self._safe_get(PATH_INIT_INFO)
+        qos_info = await self._safe_get(PATH_QOS_INFO)
 
         return parse_status(
             newstatus=newstatus,
@@ -288,6 +307,8 @@ class MiWiFiClient:
             led=led,
             router_info=router_info,
             lan_info=lan_info,
+            init_info=init_info,
+            qos_info=qos_info,
         )
 
     async def async_get_blocked_devices(self) -> list[dict]:
