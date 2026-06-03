@@ -1,4 +1,4 @@
-"""Exceptions for the Xiaomi MiWiFi client."""
+"""Exceptions for the MiWiFi client."""
 from __future__ import annotations
 
 
