@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here.
 
+## [0.7.0] - 2026-07-30
+
+### Fixed
+- A total request timeout is now raised as `MiWiFiConnectionError`. `aiohttp`
+  raises a bare `TimeoutError` for total timeouts, which is not an
+  `aiohttp.ClientError`, so it escaped every `except MiWiFiConnectionError`
+  guard — including `_safe_get` — and failed a whole poll instead of degrading
+  the affected endpoint.
+- `misystem/status` and `misystem/devicelist` now use `HTTP_TIMEOUT_SLOW`.
+  Both walk the full client table and measured 8-9s on a main router with ~90
+  clients, against a 12s `HTTP_TIMEOUT`.
+
+### Changed
+- New `SLOW_PATHS` constant drives the per-endpoint timeout; `_request`/`_get`
+  take `timeout_s: int | None = None` and resolve the default from the path.
+  An explicit `timeout_s` still wins.
+
 ## [0.6.0] - 2026-06-02
 
 ### Added
