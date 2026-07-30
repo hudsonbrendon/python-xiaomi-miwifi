@@ -56,6 +56,7 @@ from .const import (
     PATH_WIFI_DETAIL,
     PATH_WIFI_DOWN,
     PATH_WIFI_UP,
+    SLOW_PATHS,
     WIFI_INDEX_5G,
     WIFI_INDEX_24G,
 )
@@ -186,12 +187,14 @@ class MiWiFiClient:
         path: str,
         *,
         data: dict | None = None,
-        timeout_s: int = HTTP_TIMEOUT,
+        timeout_s: int | None = None,
         _retry: bool = True,
     ) -> dict[str, Any]:
         if self._token is None:
             await self.async_login()
         session = await self._ensure_session()
+        if timeout_s is None:
+            timeout_s = HTTP_TIMEOUT_SLOW if path in SLOW_PATHS else HTTP_TIMEOUT
         timeout = aiohttp.ClientTimeout(total=timeout_s)
         url = f"{self._base}/;stok={self._token}/{path}"
         try:
@@ -199,6 +202,14 @@ class MiWiFiClient:
                 method, url, data=data, timeout=timeout
             ) as resp:
                 text = await resp.text()
+        except TimeoutError as err:
+            # aiohttp raises a bare TimeoutError on a total timeout, which is
+            # NOT an aiohttp.ClientError. Left untranslated it escapes every
+            # `except MiWiFiConnectionError` guard callers use around
+            # best-effort endpoints, failing the whole poll instead of degrading.
+            raise MiWiFiConnectionError(
+                f"request to {path} timed out after {timeout_s}s"
+            ) from err
         except aiohttp.ClientError as err:
             raise MiWiFiConnectionError(f"request to {path} failed: {err}") from err
 
@@ -215,7 +226,7 @@ class MiWiFiClient:
             )
         return payload
 
-    async def _get(self, path: str, *, timeout_s: int = HTTP_TIMEOUT) -> dict[str, Any]:
+    async def _get(self, path: str, *, timeout_s: int | None = None) -> dict[str, Any]:
         return await self._request("GET", path, timeout_s=timeout_s)
 
     async def _safe_get(self, path: str) -> dict:

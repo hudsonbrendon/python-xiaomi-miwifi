@@ -41,6 +41,11 @@ PATH_QOS_INFO = "api/misystem/qos_info"
 PATH_QOS_SWITCH = "api/misystem/qos_switch"
 PATH_INIT_INFO = "api/xqsystem/init_info"
 
+# Endpoints that walk the whole client table. On a busy main router (~90
+# clients) these measured 8-9s, uncomfortably close to HTTP_TIMEOUT, so they
+# get HTTP_TIMEOUT_SLOW unless the caller passes an explicit timeout.
+SLOW_PATHS = frozenset({PATH_STATUS, PATH_DEVICELIST, PATH_MACFILTER_INFO})
+
 # v0.5 read endpoints
 PATH_BANDWIDTH_TEST = "api/misystem/bandwidth_test"
 PATH_PPPOE_STATUS = "api/xqnetwork/pppoe_status"

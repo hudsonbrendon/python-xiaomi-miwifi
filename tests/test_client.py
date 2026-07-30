@@ -801,3 +801,80 @@ async def test_set_and_clear_dmz_and_ddns_and_dhcp(host, base):
         assert await client.async_set_ddns(True) is True
         assert await client.async_set_dhcp(5, 250, "720m") is True
     await client.async_close()
+
+
+def test_slow_paths_cover_client_table_endpoints():
+    assert const.PATH_STATUS in const.SLOW_PATHS
+    assert const.PATH_DEVICELIST in const.SLOW_PATHS
+    assert const.PATH_MACFILTER_INFO in const.SLOW_PATHS
+    assert const.PATH_NEWSTATUS not in const.SLOW_PATHS
+    assert const.HTTP_TIMEOUT_SLOW > const.HTTP_TIMEOUT
+
+
+async def test_slow_endpoint_gets_longer_timeout(host, base, monkeypatch):
+    """devicelist walks ~90 clients and measured 8-9s on a busy router."""
+    from tests import conftest as c
+
+    seen: dict[str, float] = {}
+    real = MiWiFiClient._request
+
+    async def spy(self, method, path, **kw):
+        result = await real(self, method, path, **kw)
+        seen[path] = kw.get("timeout_s")
+        return result
+
+    monkeypatch.setattr(MiWiFiClient, "_request", spy)
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(f"{base}/;stok=TESTTOKEN/api/misystem/devicelist", payload=c.DEVICELIST)
+        m.get(f"{base}/;stok=TESTTOKEN/api/misystem/newstatus", payload=c.NEWSTATUS)
+        await client.async_get_clients()
+        await client.async_get_newstatus()
+    # both went through with the default (None) and got resolved inside _request
+    assert seen[const.PATH_DEVICELIST] is None
+    assert seen[const.PATH_NEWSTATUS] is None
+    await client.async_close()
+
+
+async def test_timeout_becomes_connection_error(host, base):
+    """aiohttp raises bare TimeoutError; callers only guard MiWiFiConnectionError."""
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(
+            f"{base}/;stok=TESTTOKEN/api/misystem/devicelist",
+            exception=TimeoutError("total timeout"),
+        )
+        with pytest.raises(MiWiFiConnectionError, match="timed out"):
+            await client.async_get_clients()
+    await client.async_close()
+
+
+async def test_safe_get_swallows_timeout(host, base):
+    """A slow optional endpoint must degrade, not fail the whole poll."""
+    from tests import conftest as c
+
+    client = MiWiFiClient(host, password="foco2021")
+    with aioresponses() as m:
+        m.get(f"{base}/web", body=c.LOGIN_HTML)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload=c.LOGIN_OK,
+        )
+        m.get(
+            f"{base}/;stok=TESTTOKEN/api/misystem/led",
+            exception=TimeoutError("total timeout"),
+        )
+        assert await client._safe_get(const.PATH_LED) == {}
+    await client.async_close()
