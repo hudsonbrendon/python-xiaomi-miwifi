@@ -1,7 +1,9 @@
 """Typed data models parsed from MiWiFi LuCI API responses."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from .routers import friendly_model
 
@@ -11,7 +13,7 @@ _MODE_NAMES = {0: "Router", 1: "Repeater", 2: "Access Point", 9: "Mesh"}
 
 def _to_int(value: object, default: int = 0) -> int:
     try:
-        return int(value)  # type: ignore[arg-type]
+        return int(value)  # type: ignore[call-overload,no-any-return]
     except (TypeError, ValueError):
         return default
 
@@ -43,7 +45,7 @@ class MeshNode:
         return self.mode == 0
 
     @classmethod
-    def from_entry(cls, entry: dict) -> MeshNode:
+    def from_entry(cls, entry: dict[str, Any]) -> MeshNode:
         return cls(
             name=entry.get("name", ""),
             ip=entry.get("ip", ""),
@@ -72,7 +74,7 @@ class ClientDevice:
     upload_total: int = 0
 
     @classmethod
-    def from_entry(cls, entry: dict) -> ClientDevice:
+    def from_entry(cls, entry: dict[str, Any]) -> ClientDevice:
         ips = entry.get("ip") or []
         ip = ips[0].get("ip", "") if ips and isinstance(ips[0], dict) else ""
         return cls(
@@ -87,17 +89,17 @@ class ClientDevice:
 
 def merge_client_telemetry(
     clients: list[ClientDevice],
-    status_devs: list,
-    connect_devs: list,
+    status_devs: list[Any],
+    connect_devs: list[Any],
 ) -> list[ClientDevice]:
-    """Merge per-device speed/traffic (misystem/status) and signal/band
-    (wifi_connect_devices) into the ClientDevice list, matched by MAC
-    (case-insensitive). Unmatched clients keep their zero defaults.
+    """Merge per-device telemetry into the ClientDevice list.
+
+    Speed/traffic comes from misystem/status and signal/band from
+    wifi_connect_devices, matched by MAC (case-insensitive). Unmatched
+    clients keep their zero defaults.
     """
     by_status = {
-        d["mac"].upper(): d
-        for d in status_devs
-        if isinstance(d, dict) and d.get("mac")
+        d["mac"].upper(): d for d in status_devs if isinstance(d, dict) and d.get("mac")
     }
     by_signal = {
         d["mac"].upper(): d
@@ -190,26 +192,26 @@ class MiWiFiStatus:
 
 def parse_status(
     *,
-    newstatus: dict,
-    wan: dict,
-    status: dict,
-    topo: dict,
-    rom: dict,
-    wan_stats: dict | None = None,
-    wifi_detail: dict | None = None,
-    led: dict | None = None,
-    router_info: dict | None = None,
-    lan_info: dict | None = None,
-    init_info=None,
-    qos_info=None,
-    bandwidth_history=None,
-    pppoe=None,
-    ddns=None,
-    dmz=None,
-    portforward=None,
-    lan_dhcp=None,
-    sys_time=None,
-    ipv6=None,
+    newstatus: dict[str, Any],
+    wan: dict[str, Any],
+    status: dict[str, Any],
+    topo: dict[str, Any],
+    rom: dict[str, Any],
+    wan_stats: dict[str, Any] | None = None,
+    wifi_detail: dict[str, Any] | None = None,
+    led: dict[str, Any] | None = None,
+    router_info: dict[str, Any] | None = None,
+    lan_info: dict[str, Any] | None = None,
+    init_info: dict[str, Any] | None = None,
+    qos_info: dict[str, Any] | None = None,
+    bandwidth_history: dict[str, Any] | None = None,
+    pppoe: dict[str, Any] | None = None,
+    ddns: dict[str, Any] | None = None,
+    dmz: dict[str, Any] | None = None,
+    portforward: dict[str, Any] | None = None,
+    lan_dhcp: dict[str, Any] | None = None,
+    sys_time: dict[str, Any] | None = None,
+    ipv6: dict[str, Any] | None = None,
 ) -> MiWiFiStatus:
     """Combine the read endpoints into one MiWiFiStatus.
 
@@ -284,15 +286,15 @@ def parse_status(
 
     link_list = lan_info.get("linkList")
     lan_ports = (
-        [bool(_to_int(x)) for x in link_list]
-        if isinstance(link_list, list)
-        else []
+        [bool(_to_int(x)) for x in link_list] if isinstance(link_list, list) else []
     )
 
-    dns = pppoe.get("dns") if isinstance(pppoe.get("dns"), list) else []
+    raw_dns = pppoe.get("dns")
+    dns = raw_dns if isinstance(raw_dns, list) else []
     pf_list = portforward.get("list")
     pf_count = len(pf_list) if isinstance(pf_list, list) else 0
-    dhcp = lan_dhcp.get("info") if isinstance(lan_dhcp.get("info"), dict) else {}
+    raw_dhcp = lan_dhcp.get("info")
+    dhcp = raw_dhcp if isinstance(raw_dhcp, dict) else {}
     tz = (
         (sys_time.get("time") or {}).get("timezone", "")
         if isinstance(sys_time.get("time"), dict)

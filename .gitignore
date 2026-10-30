@@ -8,3 +8,4 @@ build/
 *.egg-info/
 site/
 .coverage
+.mypy_cache/

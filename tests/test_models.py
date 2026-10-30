@@ -32,44 +32,82 @@ WAN = {
 STATUS = {
     "code": 0,
     "dev": [
-        {"mac": "AA", "devname": "a", "upspeed": "100", "downspeed": "200",
-         "online": "5"},
-        {"mac": "BB", "devname": "b", "upspeed": "50", "downspeed": "25",
-         "online": "5"},
+        {
+            "mac": "AA",
+            "devname": "a",
+            "upspeed": "100",
+            "downspeed": "200",
+            "online": "5",
+        },
+        {
+            "mac": "BB",
+            "devname": "b",
+            "upspeed": "50",
+            "downspeed": "25",
+            "online": "5",
+        },
     ],
 }
 TOPO = {
     "code": 0,
     "graph": {
-        "name": "Xiaomi_4C14", "ip": "192.168.31.1", "hardware": "RM1800",
-        "ssid": "CASA_396_2G", "mode": 0,
+        "name": "Xiaomi_4C14",
+        "ip": "192.168.31.1",
+        "hardware": "RM1800",
+        "ssid": "CASA_396_2G",
+        "mode": 0,
         "leafs": [
-            {"name": "Xiaomi_C54C_3AB3", "ip": "192.168.31.215",
-             "hardware": "RM1800", "ssid": "CASA_396_5G", "mode": 8},
-            {"name": "ra82_miap9558", "ip": "192.168.31.156",
-             "hardware": "RA82", "ssid": "CASA_396_2G", "mode": 8},
+            {
+                "name": "Xiaomi_C54C_3AB3",
+                "ip": "192.168.31.215",
+                "hardware": "RM1800",
+                "ssid": "CASA_396_5G",
+                "mode": 8,
+            },
+            {
+                "name": "ra82_miap9558",
+                "ip": "192.168.31.156",
+                "hardware": "RA82",
+                "ssid": "CASA_396_2G",
+                "mode": 8,
+            },
         ],
     },
 }
 ROM = {
-    "code": 0, "needUpdate": 0, "version": "1.0.394",
+    "code": 0,
+    "needUpdate": 0,
+    "version": "1.0.394",
     "changeLog": "Bug fixes and stability improvements.",
 }
 WAN_STATS = {
     "code": 0,
     "statistics": {
-        "download": "123456789", "upload": "987654321",
-        "maxdownloadspeed": "5000000", "maxuploadspeed": "1000000",
+        "download": "123456789",
+        "upload": "987654321",
+        "maxdownloadspeed": "5000000",
+        "maxuploadspeed": "1000000",
     },
-    "downspeed": "400", "upspeed": "120",
+    "downspeed": "400",
+    "upspeed": "120",
 }
 WIFI_DETAIL = {
     "code": 0,
     "info": [
-        {"ifname": "wl0", "ssid": "CASA_396_5G", "encryption": "psk2",
-         "channelInfo": {"channel": 36}, "channel": 36},
-        {"ifname": "wl1", "ssid": "CASA_396_2G", "encryption": "mixed-psk",
-         "channelInfo": {"channel": 6}, "channel": 6},
+        {
+            "ifname": "wl0",
+            "ssid": "CASA_396_5G",
+            "encryption": "psk2",
+            "channelInfo": {"channel": 36},
+            "channel": 36,
+        },
+        {
+            "ifname": "wl1",
+            "ssid": "CASA_396_2G",
+            "encryption": "mixed-psk",
+            "channelInfo": {"channel": 6},
+            "channel": 6,
+        },
     ],
 }
 LED = {"code": 0, "status": 1}
@@ -105,8 +143,14 @@ def test_parse_status_aggregates_all_sources():
 
 def test_parse_status_populates_v02_fields():
     status = parse_status(
-        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
-        wan_stats=WAN_STATS, wifi_detail=WIFI_DETAIL, led=LED,
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
+        wan_stats=WAN_STATS,
+        wifi_detail=WIFI_DETAIL,
+        led=LED,
     )
     # WAN cumulative totals + peak speeds from wan_statistics.
     assert status.wan_download_total == 123456789
@@ -148,9 +192,7 @@ def test_offline_status_factory():
 
 
 def test_parse_status_handles_all_none_inputs():
-    status = parse_status(
-        newstatus=None, wan=None, status=None, topo=None, rom=None
-    )
+    status = parse_status(newstatus=None, wan=None, status=None, topo=None, rom=None)
     assert isinstance(status, MiWiFiStatus)
     assert status.online is True
     assert status.hardware == ""
@@ -167,9 +209,7 @@ def test_parse_status_handles_all_none_inputs():
 
 
 def test_parse_status_handles_all_empty_dicts():
-    status = parse_status(
-        newstatus={}, wan={}, status={}, topo={}, rom={}
-    )
+    status = parse_status(newstatus={}, wan={}, status={}, topo={}, rom={})
     assert isinstance(status, MiWiFiStatus)
     assert status.online is True
     assert status.client_count == 0
@@ -195,8 +235,13 @@ def test_parse_status_skips_non_dict_list_elements():
 
 def test_parse_status_mode_and_lan_ports():
     status = parse_status(
-        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
-        router_info={"mode": 0}, lan_info={"linkList": [0, 1, 0]},
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
+        router_info={"mode": 0},
+        lan_info={"linkList": [0, 1, 0]},
     )
     assert status.mode == 0
     assert status.mode_name == "Router"
@@ -206,8 +251,13 @@ def test_parse_status_mode_and_lan_ports():
 
 def test_parse_status_mode_unknown_and_no_lan():
     status = parse_status(
-        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
-        router_info={"mode": 7}, lan_info=None,
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
+        router_info={"mode": 7},
+        lan_info=None,
     )
     assert status.mode_name == "Mode 7"
     assert status.lan_ports == []
@@ -215,14 +265,28 @@ def test_parse_status_mode_unknown_and_no_lan():
 
 
 def test_parse_status_txpwr_country_qos():
-    wifi_detail = {"info": [
-        {"ifname": "wl1", "channelInfo": {"channel": 6}, "encryption": "mixed-psk",
-         "txpwr": "max"},
-        {"ifname": "wl0", "channelInfo": {"channel": 36}, "encryption": "mixed-psk",
-         "txpwr": "mid"},
-    ]}
+    wifi_detail = {
+        "info": [
+            {
+                "ifname": "wl1",
+                "channelInfo": {"channel": 6},
+                "encryption": "mixed-psk",
+                "txpwr": "max",
+            },
+            {
+                "ifname": "wl0",
+                "channelInfo": {"channel": 36},
+                "encryption": "mixed-psk",
+                "txpwr": "mid",
+            },
+        ]
+    }
     status = parse_status(
-        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
         wifi_detail=wifi_detail,
         init_info={"countrycode": "CN", "model": "xiaomi.router.rm1800"},
         qos_info={"status": {"on": 1}},
@@ -235,8 +299,13 @@ def test_parse_status_txpwr_country_qos():
 
 def test_parse_status_qos_off_and_no_init():
     status = parse_status(
-        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
-        qos_info={"status": {"on": 0}}, init_info=None,
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
+        qos_info={"status": {"on": 0}},
+        init_info=None,
     )
     assert status.qos_on is False
     assert status.country_code == ""
@@ -256,8 +325,11 @@ def test_client_device_from_empty_entry():
 
 def test_client_device_from_devicelist_entry():
     entry = {
-        "name": "homeassistant", "mac": "B8:AE:ED:77:48:B7", "online": 1,
-        "parent": "", "isap": 0,
+        "name": "homeassistant",
+        "mac": "B8:AE:ED:77:48:B7",
+        "online": 1,
+        "parent": "",
+        "isap": 0,
         "ip": [{"ip": "192.168.31.150"}],
     }
     dev = ClientDevice.from_entry(entry)
@@ -285,17 +357,24 @@ def test_merge_client_telemetry():
 
     base = [
         ClientDevice.from_entry(
-            {"name": "tv", "mac": "AA:BB:CC:DD:EE:01", "online": 1,
-             "ip": [{"ip": "192.168.31.9"}]}
+            {
+                "name": "tv",
+                "mac": "AA:BB:CC:DD:EE:01",
+                "online": 1,
+                "ip": [{"ip": "192.168.31.9"}],
+            }
         )
     ]
     status_devs = [
-        {"mac": "aa:bb:cc:dd:ee:01", "downspeed": "1000", "upspeed": "200",
-         "download": "5000000", "upload": "900000"}
+        {
+            "mac": "aa:bb:cc:dd:ee:01",
+            "downspeed": "1000",
+            "upspeed": "200",
+            "download": "5000000",
+            "upload": "900000",
+        }
     ]
-    connect_devs = [
-        {"mac": "AA:BB:CC:DD:EE:01", "wifiIndex": 2, "signal": 110}
-    ]
+    connect_devs = [{"mac": "AA:BB:CC:DD:EE:01", "wifiIndex": 2, "signal": 110}]
     merged = merge_client_telemetry(base, status_devs, connect_devs)
     d = merged[0]
     assert d.download_speed == 1000
@@ -310,9 +389,7 @@ def test_merge_client_telemetry_tolerates_missing_and_bad():
     from xiaomi_miwifi.models import merge_client_telemetry
 
     base = [
-        ClientDevice.from_entry(
-            {"name": "x", "mac": "11:22", "online": 1, "ip": []}
-        )
+        ClientDevice.from_entry({"name": "x", "mac": "11:22", "online": 1, "ip": []})
     ]
     # no matching telemetry, plus a junk non-dict element
     merged = merge_client_telemetry(base, [None, {}], [None])
@@ -322,10 +399,15 @@ def test_merge_client_telemetry_tolerates_missing_and_bad():
 
 def test_parse_status_v05_fields():
     status = parse_status(
-        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
         bandwidth_history={"download": 865.28, "upload": 1553.92, "bandwidth": 6.76},
         pppoe={"dns": ["1.1.1.1", "8.8.8.8"]},
-        ddns={"on": 1}, dmz={"status": 1, "lanip": "192.168.31.50"},
+        ddns={"on": 1},
+        dmz={"status": 1, "lanip": "192.168.31.50"},
         portforward={"list": [{"name": "web"}, {"name": "ssh"}]},
         lan_dhcp={"info": {"leasetimeNum": "720", "limit": "250", "start": "5"}},
         sys_time={"time": {"timezone": "CST-8"}},
@@ -357,12 +439,25 @@ def test_parse_status_v05_defaults_when_absent():
 
 
 def test_parse_status_ipv6():
-    on = parse_status(newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
-                      ipv6={"info": {"ipv6_info": {"wanType": "native"}}})
-    off = parse_status(newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM,
-                       ipv6={"info": {"ipv6_info": {"wanType": "off"}}})
+    on = parse_status(
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
+        ipv6={"info": {"ipv6_info": {"wanType": "native"}}},
+    )
+    off = parse_status(
+        newstatus=NEWSTATUS,
+        wan=WAN,
+        status=STATUS,
+        topo=TOPO,
+        rom=ROM,
+        ipv6={"info": {"ipv6_info": {"wanType": "off"}}},
+    )
     assert on.ipv6_on is True
     assert off.ipv6_on is False
     default = parse_status(
-        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM)
+        newstatus=NEWSTATUS, wan=WAN, status=STATUS, topo=TOPO, rom=ROM
+    )
     assert default.ipv6_on is False

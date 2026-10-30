@@ -1,4 +1,5 @@
 """Async client for Xiaomi / MiWiFi routers over the LuCI HTTP API."""
+
 from __future__ import annotations
 
 import hashlib
@@ -6,8 +7,8 @@ import json
 import random
 import re
 import time
+from typing import Any, ClassVar, Self
 import urllib.parse
-from typing import Any
 
 import aiohttp
 
@@ -71,8 +72,18 @@ _KEY_RE = re.compile(r"key:\s*'([^']+)'")
 _DEVICEID_RE = re.compile(r"deviceId\s*[=:]\s*'([^']+)'")
 
 # Mutating LuCI paths that must not be reachable through the read-only passthrough.
-_LUCI_BLOCKED_SUBSTRINGS = ("reboot", "set_", "upgrade", "_bind", "_unbind",
-                            "wifi_up", "wifi_down", "mac_filter", "shutdown", "reset")
+_LUCI_BLOCKED_SUBSTRINGS = (
+    "reboot",
+    "set_",
+    "upgrade",
+    "_bind",
+    "_unbind",
+    "wifi_up",
+    "wifi_down",
+    "mac_filter",
+    "shutdown",
+    "reset",
+)
 
 
 class MiWiFiClient:
@@ -132,7 +143,7 @@ class MiWiFiClient:
 
     # -- auth -----------------------------------------------------------
     def _make_nonce(self, device_id: str) -> str:
-        return f"0_{device_id}_{int(time.time())}_{random.randint(0, 9999999)}"
+        return f"0_{device_id}_{int(time.time())}_{random.randint(0, 9999999)}"  # noqa: S311
 
     async def async_login(self) -> str:
         session = await self._ensure_session()
@@ -151,8 +162,8 @@ class MiWiFiClient:
         device_id = device_match.group(1) if device_match else "0"
 
         nonce = self._make_nonce(device_id)
-        inner = hashlib.sha1((self._password + key).encode()).hexdigest()
-        pwd_hash = hashlib.sha1((nonce + inner).encode()).hexdigest()
+        inner = hashlib.sha1((self._password + key).encode()).hexdigest()  # noqa: S324
+        pwd_hash = hashlib.sha1((nonce + inner).encode()).hexdigest()  # noqa: S324
 
         form = {
             "username": self._username,
@@ -177,7 +188,7 @@ class MiWiFiClient:
         if not token:
             raise MiWiFiAuthError(f"login failed: {payload}")
         self._token = token
-        return token
+        return token  # type: ignore[no-any-return]
 
     # -- raw authenticated requests -------------------------------------
     async def _request(
@@ -185,7 +196,7 @@ class MiWiFiClient:
         method: str,
         path: str,
         *,
-        data: dict | None = None,
+        data: dict[str, Any] | None = None,
         timeout_s: int = HTTP_TIMEOUT,
         _retry: bool = True,
     ) -> dict[str, Any]:
@@ -195,9 +206,7 @@ class MiWiFiClient:
         timeout = aiohttp.ClientTimeout(total=timeout_s)
         url = f"{self._base}/;stok={self._token}/{path}"
         try:
-            async with session.request(
-                method, url, data=data, timeout=timeout
-            ) as resp:
+            async with session.request(method, url, data=data, timeout=timeout) as resp:
                 text = await resp.text()
         except aiohttp.ClientError as err:
             raise MiWiFiConnectionError(f"request to {path} failed: {err}") from err
@@ -213,98 +222,99 @@ class MiWiFiClient:
             return await self._request(
                 method, path, data=data, timeout_s=timeout_s, _retry=False
             )
-        return payload
+        return payload  # type: ignore[no-any-return]
 
     async def _get(self, path: str, *, timeout_s: int = HTTP_TIMEOUT) -> dict[str, Any]:
         return await self._request("GET", path, timeout_s=timeout_s)
 
-    async def _safe_get(self, path: str) -> dict:
+    async def _safe_get(self, path: str) -> dict[str, Any]:
         """GET returning {} on connection error (for optional endpoints)."""
         try:
             return await self._get(path)
         except MiWiFiConnectionError:
             return {}
 
-    async def _post(self, path: str, data: dict) -> dict[str, Any]:
+    async def _post(self, path: str, data: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", path, data=data)
 
     # -- read endpoints -------------------------------------------------
-    async def async_get_newstatus(self) -> dict:
+    async def async_get_newstatus(self) -> dict[str, Any]:
         return await self._get(PATH_NEWSTATUS)
 
-    async def async_get_wan_info(self) -> dict:
+    async def async_get_wan_info(self) -> dict[str, Any]:
         return await self._get(PATH_WAN_INFO)
 
-    async def async_get_raw_status(self) -> dict:
+    async def async_get_raw_status(self) -> dict[str, Any]:
         return await self._get(PATH_STATUS)
 
-    async def async_get_topology(self) -> dict:
+    async def async_get_topology(self) -> dict[str, Any]:
         return await self._get(PATH_TOPO_GRAPH)
 
-    async def async_get_rom_update(self) -> dict:
+    async def async_get_rom_update(self) -> dict[str, Any]:
         return await self._get(PATH_CHECK_ROM)
 
-    async def async_get_wan_statistics(self) -> dict:
+    async def async_get_wan_statistics(self) -> dict[str, Any]:
         return await self._get(PATH_WAN_STATISTICS)
 
-    async def async_get_wifi_detail(self) -> dict:
+    async def async_get_wifi_detail(self) -> dict[str, Any]:
         return await self._get(PATH_WIFI_DETAIL)
 
-    async def async_get_macfilter(self) -> dict:
+    async def async_get_macfilter(self) -> dict[str, Any]:
         """Read the MAC filter list. Slow endpoint — uses a longer timeout."""
         return await self._get(PATH_MACFILTER_INFO, timeout_s=HTTP_TIMEOUT_SLOW)
 
-    async def async_get_led(self) -> dict:
+    async def async_get_led(self) -> dict[str, Any]:
         return await self._get(PATH_LED)
 
-    async def async_get_router_info(self) -> dict:
+    async def async_get_router_info(self) -> dict[str, Any]:
         return await self._get(PATH_ROUTER_INFO)
 
-    async def async_get_wifi_connect_devices(self) -> dict:
+    async def async_get_wifi_connect_devices(self) -> dict[str, Any]:
         return await self._get(PATH_WIFI_CONNECT_DEVICES)
 
-    async def async_get_lan_info(self) -> dict:
+    async def async_get_lan_info(self) -> dict[str, Any]:
         return await self._get(PATH_LAN_INFO)
 
     async def async_get_available_channels(self, wifi_index: int) -> list[str]:
-        """Return the list of channel numbers (as strings; "0" = auto)
-        available for a band. wifi_index: 1 = 2.4G, 2 = 5G.
+        """Return the channel numbers available for a band.
+
+        Channels are strings ("0" = auto). wifi_index: 1 = 2.4G, 2 = 5G.
         """
         data = await self._get(f"{PATH_AVAILABLE_CHANNELS}?wifiIndex={wifi_index}")
         items = data.get("list", []) if isinstance(data, dict) else []
         return [str(i.get("c")) for i in items if isinstance(i, dict) and "c" in i]
 
-    async def async_get_init_info(self) -> dict:
+    async def async_get_init_info(self) -> dict[str, Any]:
         return await self._get(PATH_INIT_INFO)
 
-    async def async_get_qos_info(self) -> dict:
+    async def async_get_qos_info(self) -> dict[str, Any]:
         return await self._get(PATH_QOS_INFO)
 
-    async def async_get_bandwidth_history(self) -> dict:
+    async def async_get_bandwidth_history(self) -> dict[str, Any]:
         return await self._get(f"{PATH_BANDWIDTH_TEST}?history=1")
 
-    async def async_get_pppoe_status(self) -> dict:
+    async def async_get_pppoe_status(self) -> dict[str, Any]:
         return await self._get(PATH_PPPOE_STATUS)
 
-    async def async_get_ddns(self) -> dict:
+    async def async_get_ddns(self) -> dict[str, Any]:
         return await self._get(PATH_DDNS)
 
-    async def async_get_dmz(self) -> dict:
+    async def async_get_dmz(self) -> dict[str, Any]:
         return await self._get(PATH_DMZ)
 
-    async def async_get_portforward(self, ftype: int = 1) -> dict:
+    async def async_get_portforward(self, ftype: int = 1) -> dict[str, Any]:
         return await self._get(f"{PATH_PORTFORWARD}?ftype={ftype}")
 
-    async def async_get_lan_dhcp(self) -> dict:
+    async def async_get_lan_dhcp(self) -> dict[str, Any]:
         return await self._get(PATH_LAN_DHCP)
 
-    async def async_get_sys_time(self) -> dict:
+    async def async_get_sys_time(self) -> dict[str, Any]:
         return await self._get(PATH_SYS_TIME)
 
-    async def async_get_ipv6_status(self) -> dict:
+    async def async_get_ipv6_status(self) -> dict[str, Any]:
         return await self._get(PATH_IPV6_STATUS)
 
-    async def async_luci_request(self, path: str) -> dict:
+    async def async_luci_request(self, path: str) -> dict[str, Any]:
         """Generic READ-ONLY GET passthrough to any LuCI API path.
 
         ``path`` is the API path WITHOUT the leading ``;stok=`` prefix,
@@ -371,16 +381,16 @@ class MiWiFiClient:
             ipv6=ipv6,
         )
 
-    async def async_get_blocked_devices(self) -> list[dict]:
+    async def async_get_blocked_devices(self) -> list[dict[str, Any]]:
         data = await self.async_get_macfilter()
-        return data.get("flist", []) if isinstance(data, dict) else []
+        return data.get("flist", []) if isinstance(data, dict) else []  # type: ignore[no-any-return]
 
     async def async_get_clients(self) -> list[ClientDevice]:
         data = await self._get(PATH_DEVICELIST)
         entries = data.get("list", []) if isinstance(data, dict) else []
         clients = [ClientDevice.from_entry(e) for e in entries]
-        status_devs: list = []
-        connect_devs: list = []
+        status_devs: list[Any] = []
+        connect_devs: list[Any] = []
         try:
             raw = await self._get(PATH_STATUS)
             status_devs = raw.get("dev", []) if isinstance(raw, dict) else []
@@ -393,13 +403,13 @@ class MiWiFiClient:
             pass
         return merge_client_telemetry(clients, status_devs, connect_devs)
 
-    async def async_get_dhcp_reservations(self) -> list[dict]:
+    async def async_get_dhcp_reservations(self) -> list[dict[str, Any]]:
         data = await self._get(PATH_MACBIND_INFO)
-        return data.get("list", []) if isinstance(data, dict) else []
+        return data.get("list", []) if isinstance(data, dict) else []  # type: ignore[no-any-return]
 
     # -- write controls -------------------------------------------------
     @staticmethod
-    def _ok(payload: dict) -> bool:
+    def _ok(payload: dict[str, Any]) -> bool:
         return isinstance(payload, dict) and payload.get("code") == 0
 
     async def async_reboot(self) -> bool:
@@ -411,9 +421,7 @@ class MiWiFiClient:
         path = PATH_WIFI_UP if enabled else PATH_WIFI_DOWN
         return self._ok(await self._post(path, {"ifname": ifname}))
 
-    async def async_add_dhcp_reservation(
-        self, mac: str, ip: str, name: str
-    ) -> bool:
+    async def async_add_dhcp_reservation(self, mac: str, ip: str, name: str) -> bool:
         """Add/replace a DHCP reservation.
 
         The router uses replace semantics: the full list must be POSTed or
@@ -423,12 +431,14 @@ class MiWiFiClient:
         current = await self.async_get_dhcp_reservations()
         merged = [r for r in current if r.get("mac", "").upper() != mac.upper()]
         merged.append({"ip": ip, "mac": mac, "name": name})
-        body = {"data": json.dumps(
-            [
-                {"ip": r["ip"], "mac": r["mac"], "name": r.get("name", "")}
-                for r in merged
-            ]
-        )}
+        body = {
+            "data": json.dumps(
+                [
+                    {"ip": r["ip"], "mac": r["mac"], "name": r.get("name", "")}
+                    for r in merged
+                ]
+            )
+        }
         return self._ok(await self._post(PATH_MAC_BIND, body))
 
     async def async_remove_dhcp_reservation(self, mac: str) -> bool:
@@ -437,19 +447,18 @@ class MiWiFiClient:
 
     async def async_block_device(self, mac: str) -> bool:
         """Block a device's internet access (set_mac_filter wan=0)."""
-        return self._ok(
-            await self._post(PATH_SET_MAC_FILTER, {"mac": mac, "wan": "0"})
-        )
+        return self._ok(await self._post(PATH_SET_MAC_FILTER, {"mac": mac, "wan": "0"}))
 
     async def async_unblock_device(self, mac: str) -> bool:
         """Restore a device's internet access (set_mac_filter wan=1)."""
-        return self._ok(
-            await self._post(PATH_SET_MAC_FILTER, {"mac": mac, "wan": "1"})
-        )
+        return self._ok(await self._post(PATH_SET_MAC_FILTER, {"mac": mac, "wan": "1"}))
 
-    _IFNAME_FOR_INDEX = {WIFI_INDEX_24G: "wl1", WIFI_INDEX_5G: "wl0"}
+    _IFNAME_FOR_INDEX: ClassVar[dict[int, str]] = {
+        WIFI_INDEX_24G: "wl1",
+        WIFI_INDEX_5G: "wl0",
+    }
 
-    async def _radio_config(self, wifi_index: int) -> dict:
+    async def _radio_config(self, wifi_index: int) -> dict[str, Any]:
         """Return the current wifi_detail_all entry for a band, or raise."""
         detail = await self._get(PATH_WIFI_DETAIL)
         ifname = self._IFNAME_FOR_INDEX.get(wifi_index)
@@ -459,9 +468,11 @@ class MiWiFiClient:
                 return radio
         raise MiWiFiError(f"radio wifiIndex={wifi_index} not found")
 
-    async def _set_wifi(self, wifi_index: int, overrides: dict) -> bool:
-        """Read-modify-write set_wifi: resend the full current radio config
-        with the given field(s) overridden. Disruptive (restarts the radio).
+    async def _set_wifi(self, wifi_index: int, overrides: dict[str, Any]) -> bool:
+        """Read-modify-write set_wifi.
+
+        Resend the full current radio config with the given field(s)
+        overridden. Disruptive (restarts the radio).
         """
         radio = await self._radio_config(wifi_index)
         chan_info = radio.get("channelInfo") or {}
@@ -499,9 +510,11 @@ class MiWiFiClient:
         on = 1 if enabled else 0
         return self._ok(await self._get(f"{PATH_QOS_SWITCH}?on={on}"))
 
-    async def async_run_speed_test(self) -> dict:
-        """Trigger a WAN speed test and return its result. Saturates the WAN
-        link briefly — disruptive; never called live in tests."""
+    async def async_run_speed_test(self) -> dict[str, Any]:
+        """Trigger a WAN speed test and return its result.
+
+        Saturates the WAN link briefly: disruptive; never called live in tests.
+        """
         return await self._get(PATH_BANDWIDTH_TEST)
 
     async def async_add_port_forward(
@@ -509,8 +522,13 @@ class MiWiFiClient:
     ) -> bool:
         """Add a single-port forward (proto: 1=TCP, 2=UDP, 3=TCP+UDP) and apply."""
         params = urllib.parse.urlencode(
-            {"ip": ip, "name": name, "proto": str(proto),
-             "sport": str(sport), "dport": str(dport)}
+            {
+                "ip": ip,
+                "name": name,
+                "proto": str(proto),
+                "sport": str(sport),
+                "dport": str(dport),
+            }
         )
         if not self._ok(await self._get(f"{PATH_ADD_REDIRECT}?{params}")):
             return False
@@ -533,19 +551,21 @@ class MiWiFiClient:
 
     async def async_set_ddns(self, enabled: bool) -> bool:
         """Enable/disable DDNS."""
-        return self._ok(
-            await self._get(f"{PATH_DDNS_SWITCH}?on={1 if enabled else 0}")
-        )
+        return self._ok(await self._get(f"{PATH_DDNS_SWITCH}?on={1 if enabled else 0}"))
 
     async def async_set_dhcp(self, start: int, end: int, leasetime: str) -> bool:
         """Set DHCP pool start/end (last octet) and lease time (e.g. '720m')."""
         params = urllib.parse.urlencode(
-            {"start": str(start), "end": str(end),
-             "leasetime": leasetime, "ignore": "0"}
+            {
+                "start": str(start),
+                "end": str(end),
+                "leasetime": leasetime,
+                "ignore": "0",
+            }
         )
         return self._ok(await self._get(f"{PATH_SET_LAN_DHCP}?{params}"))
 
-    async def __aenter__(self) -> MiWiFiClient:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

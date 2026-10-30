@@ -2,8 +2,8 @@ import json
 import re
 
 import aiohttp
-import pytest
 from aioresponses import aioresponses
+import pytest
 
 from xiaomi_miwifi import const
 from xiaomi_miwifi.client import MiWiFiClient
@@ -82,8 +82,10 @@ async def test_login_failure_raises_auth_error(host, base):
     client = MiWiFiClient(host, password="wrong")
     with aioresponses() as m:
         m.get(f"{base}/web", body=LOGIN_HTML)
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload={"code": 401})
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload={"code": 401},
+        )
         with pytest.raises(MiWiFiAuthError):
             await client.async_login()
     await client.async_close()
@@ -500,8 +502,10 @@ async def test_get_wifi_connect_devices(host, base):
             re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
             payload=c.LOGIN_OK,
         )
-        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_connect_devices",
-              payload=c.CONNECT_DEVS)
+        m.get(
+            f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_connect_devices",
+            payload=c.CONNECT_DEVS,
+        )
         data = await client.async_get_wifi_connect_devices()
     assert data["list"][0]["signal"] == 110
     await client.async_close()
@@ -520,8 +524,10 @@ async def test_get_clients_is_enriched(host, base):
         tok = "TESTTOKEN"
         m.get(f"{base}/;stok={tok}/api/misystem/devicelist", payload=c.DEVICELIST)
         m.get(f"{base}/;stok={tok}/api/misystem/status", payload=c.STATUS_DEVS)
-        m.get(f"{base}/;stok={tok}/api/xqnetwork/wifi_connect_devices",
-              payload=c.CONNECT_DEVS)
+        m.get(
+            f"{base}/;stok={tok}/api/xqnetwork/wifi_connect_devices",
+            payload=c.CONNECT_DEVS,
+        )
         clients = await client.async_get_clients()
     ha = next(d for d in clients if d.mac == "B8:AE:ED:77:48:B7")
     assert ha.signal == 110
@@ -535,10 +541,14 @@ async def test_luci_request_passthrough(host, base):
     client = MiWiFiClient(host, password="foco2021")
     with aioresponses() as m:
         m.get(f"{base}/web", body="<html>key:'k'</html>")
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload={"token": "TESTTOKEN", "code": 0})
-        m.get(f"{base}/;stok=TESTTOKEN/api/misystem/router_info",
-              payload={"code": 0, "mode": 0})
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
+            payload={"token": "TESTTOKEN", "code": 0},
+        )
+        m.get(
+            f"{base}/;stok=TESTTOKEN/api/misystem/router_info",
+            payload={"code": 0, "mode": 0},
+        )
         data = await client.async_luci_request("api/misystem/router_info")
     assert data["mode"] == 0
     await client.async_close()
@@ -564,11 +574,15 @@ async def test_get_available_channels(host, base):
     client = MiWiFiClient(host, password="foco2021")
     with aioresponses() as m:
         m.get(f"{base}/web", body=c.LOGIN_HTML)
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload=c.LOGIN_OK)
-        m.get(re.compile(
-            rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/avaliable_channels.*"),
-            payload=c.AVAIL_CH_24)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"), payload=c.LOGIN_OK
+        )
+        m.get(
+            re.compile(
+                rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/avaliable_channels.*"
+            ),
+            payload=c.AVAIL_CH_24,
+        )
         chans = await client.async_get_available_channels(1)
     assert chans == ["0", "1", "6", "11"]
     await client.async_close()
@@ -580,8 +594,9 @@ async def test_get_init_info_and_qos(host, base):
     client = MiWiFiClient(host, password="foco2021")
     with aioresponses() as m:
         m.get(f"{base}/web", body=c.LOGIN_HTML)
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload=c.LOGIN_OK)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"), payload=c.LOGIN_OK
+        )
         m.get(f"{base}/;stok=TESTTOKEN/api/xqsystem/init_info", payload=c.INIT_INFO)
         m.get(f"{base}/;stok=TESTTOKEN/api/misystem/qos_info", payload=c.QOS_INFO)
         info = await client.async_get_init_info()
@@ -601,25 +616,30 @@ async def test_set_wifi_channel_preserves_fields(host, base):
     def cb(url, **kwargs):
         captured["url"] = str(url)
         from aioresponses.core import CallbackResult
+
         return CallbackResult(payload={"code": 0})
 
     client = MiWiFiClient(host, password="foco2021")
     with aioresponses() as m:
         m.get(f"{base}/web", body=c.LOGIN_HTML)
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload=c.LOGIN_OK)
-        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
-              payload=c.WIFI_DETAIL_TX)
-        m.get(re.compile(
-            rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/set_wifi.*"),
-            callback=cb)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"), payload=c.LOGIN_OK
+        )
+        m.get(
+            f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
+            payload=c.WIFI_DETAIL_TX,
+        )
+        m.get(
+            re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/set_wifi.*"),
+            callback=cb,
+        )
         ok = await client.async_set_wifi_channel(1, "11")
     assert ok is True
     q = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
     assert q["wifiIndex"] == ["1"]
     assert q["channel"] == ["11"]
-    assert q["ssid"] == ["CASA_2G"]      # preserved from current config
-    assert q["txpwr"] == ["max"]          # preserved
+    assert q["ssid"] == ["CASA_2G"]  # preserved from current config
+    assert q["txpwr"] == ["max"]  # preserved
     await client.async_close()
 
 
@@ -633,24 +653,29 @@ async def test_set_wifi_txpwr(host, base):
     def cb(url, **kwargs):
         captured["url"] = str(url)
         from aioresponses.core import CallbackResult
+
         return CallbackResult(payload={"code": 0})
 
     client = MiWiFiClient(host, password="foco2021")
     with aioresponses() as m:
         m.get(f"{base}/web", body=c.LOGIN_HTML)
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload=c.LOGIN_OK)
-        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
-              payload=c.WIFI_DETAIL_TX)
-        m.get(re.compile(
-            rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/set_wifi.*"),
-            callback=cb)
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"), payload=c.LOGIN_OK
+        )
+        m.get(
+            f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
+            payload=c.WIFI_DETAIL_TX,
+        )
+        m.get(
+            re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/set_wifi.*"),
+            callback=cb,
+        )
         ok = await client.async_set_wifi_txpwr(2, "min")
     assert ok is True
     q = urllib.parse.parse_qs(urllib.parse.urlparse(captured["url"]).query)
     assert q["wifiIndex"] == ["2"]
     assert q["txpwr"] == ["min"]
-    assert q["channel"] == ["36"]   # preserved from current config
+    assert q["channel"] == ["36"]  # preserved from current config
     await client.async_close()
 
 
@@ -660,11 +685,13 @@ async def test_set_qos(host, base):
     client = MiWiFiClient(host, password="foco2021")
     with aioresponses() as m:
         m.get(f"{base}/web", body=c.LOGIN_HTML)
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload=c.LOGIN_OK)
-        m.get(re.compile(
-            rf"{re.escape(base)}/;stok=TESTTOKEN/api/misystem/qos_switch.*"),
-            payload={"code": 0})
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"), payload=c.LOGIN_OK
+        )
+        m.get(
+            re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/misystem/qos_switch.*"),
+            payload={"code": 0},
+        )
         assert await client.async_set_qos(True) is True
     await client.async_close()
 
@@ -675,10 +702,13 @@ async def test_set_wifi_channel_unknown_index_raises(host, base):
     client = MiWiFiClient(host, password="foco2021")
     with aioresponses() as m:
         m.get(f"{base}/web", body=c.LOGIN_HTML)
-        m.post(re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
-               payload=c.LOGIN_OK)
-        m.get(f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
-              payload={"code": 0, "info": []})
+        m.post(
+            re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"), payload=c.LOGIN_OK
+        )
+        m.get(
+            f"{base}/;stok=TESTTOKEN/api/xqnetwork/wifi_detail_all",
+            payload={"code": 0, "info": []},
+        )
         with pytest.raises(MiWiFiError):
             await client.async_set_wifi_channel(1, "11")
     await client.async_close()
@@ -706,14 +736,17 @@ async def test_v05_read_endpoints(host, base):
             payload=c.LOGIN_OK,
         )
         tok = "TESTTOKEN"
-        m.get(re.compile(
-            rf"{re.escape(base)}/;stok={tok}/api/misystem/bandwidth_test.*"),
-            payload=c.BANDWIDTH_HISTORY)
+        m.get(
+            re.compile(rf"{re.escape(base)}/;stok={tok}/api/misystem/bandwidth_test.*"),
+            payload=c.BANDWIDTH_HISTORY,
+        )
         m.get(f"{base}/;stok={tok}/api/xqnetwork/pppoe_status", payload=c.PPPOE)
         m.get(f"{base}/;stok={tok}/api/xqnetwork/ddns", payload=c.DDNS)
         m.get(f"{base}/;stok={tok}/api/xqnetwork/dmz", payload=c.DMZ)
-        m.get(re.compile(rf"{re.escape(base)}/;stok={tok}/api/xqnetwork/portforward.*"),
-              payload=c.PORTFORWARD)
+        m.get(
+            re.compile(rf"{re.escape(base)}/;stok={tok}/api/xqnetwork/portforward.*"),
+            payload=c.PORTFORWARD,
+        )
         bw = await client.async_get_bandwidth_history()
         pppoe = await client.async_get_pppoe_status()
         ddns = await client.async_get_ddns()
@@ -737,9 +770,12 @@ async def test_run_speed_test(host, base):
             re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
             payload=c.LOGIN_OK,
         )
-        m.get(re.compile(
-            rf"{re.escape(base)}/;stok=TESTTOKEN/api/misystem/bandwidth_test(?!\?history).*"),
-            payload=c.BANDWIDTH_HISTORY)
+        m.get(
+            re.compile(
+                rf"{re.escape(base)}/;stok=TESTTOKEN/api/misystem/bandwidth_test(?!\?history).*"
+            ),
+            payload=c.BANDWIDTH_HISTORY,
+        )
         result = await client.async_run_speed_test()
     assert result["download"] == 865.28
     await client.async_close()
@@ -755,6 +791,7 @@ async def test_add_and_delete_port_forward(host, base):
     def cb(url, **kwargs):
         captured.setdefault("urls", []).append(str(url))
         from aioresponses.core import CallbackResult
+
         return CallbackResult(payload={"code": 0})
 
     client = MiWiFiClient(host, password="foco2021")
@@ -764,14 +801,28 @@ async def test_add_and_delete_port_forward(host, base):
             re.compile(rf"{re.escape(base)}/api/xqsystem/login.*"),
             payload=c.LOGIN_OK,
         )
-        m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/add_redirect.*"),
-              callback=cb)
-        m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/redirect_apply.*"),
-              callback=cb, repeat=True)
-        m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/delete_redirect.*"),
-              callback=cb)
+        m.get(
+            re.compile(
+                rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/add_redirect.*"
+            ),
+            callback=cb,
+        )
+        m.get(
+            re.compile(
+                rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/redirect_apply.*"
+            ),
+            callback=cb,
+            repeat=True,
+        )
+        m.get(
+            re.compile(
+                rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/delete_redirect.*"
+            ),
+            callback=cb,
+        )
         ok_add = await client.async_add_port_forward(
-            "192.168.31.50", "web", 1, 8080, 80)
+            "192.168.31.50", "web", 1, 8080, 80
+        )
         ok_del = await client.async_delete_port_forward(8080)
     assert ok_add is True and ok_del is True
     add_url = next(u for u in captured["urls"] if "add_redirect" in u)
@@ -794,8 +845,10 @@ async def test_set_and_clear_dmz_and_ddns_and_dhcp(host, base):
             payload=c.LOGIN_OK,
         )
         for ep in ("set_dmz", "dmz_off", "ddns_switch", "set_lan_dhcp"):
-            m.get(re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/{ep}.*"),
-                  payload={"code": 0})
+            m.get(
+                re.compile(rf"{re.escape(base)}/;stok=TESTTOKEN/api/xqnetwork/{ep}.*"),
+                payload={"code": 0},
+            )
         assert await client.async_set_dmz("192.168.31.50") is True
         assert await client.async_clear_dmz() is True
         assert await client.async_set_ddns(True) is True
