@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Changed
+- Tooling: hatchling>=1.27, PEP 639 license metadata, PEP 735 `[dependency-groups]`
+  with `uv.lock`, ruff `select = ["ALL"]`, mypy strict, pytest-cov/pytest-timeout,
+  Python 3.14 classifier. CI runs on uv (`uv sync --frozen`), release builds with
+  `uv build` and publishes via trusted publishing. `__version__` now comes from
+  `importlib.metadata`.
+
 ## [0.6.0] - 2026-06-02
 
 ### Added

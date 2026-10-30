@@ -4,6 +4,7 @@ Start with the models present on the maintainer's network. Add new hardware
 codes here as they are validated. The hardware code is the `platform` field
 from `api/misystem/newstatus` (also `hardware` in topo_graph).
 """
+
 from __future__ import annotations
 
 # hardware code -> human-friendly marketing name

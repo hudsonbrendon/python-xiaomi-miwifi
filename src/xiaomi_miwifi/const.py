@@ -1,4 +1,5 @@
 """Protocol constants for the MiWiFi LuCI HTTP API."""
+
 from __future__ import annotations
 
 DEFAULT_PORT = 80
